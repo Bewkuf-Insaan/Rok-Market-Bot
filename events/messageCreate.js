@@ -192,40 +192,73 @@ const sent = await channel.send({
     // BUYER FLOW
     // =================================================
 
-    if (draft.role === "buyer") {
+   // =================================================
+// BUYER FLOW
+// =================================================
 
-      if (draft.step === 1) {
+if (draft.role === "buyer") {
 
-        const budget = parseInt(message.content);
+  if (draft.step === 1) {
 
-        if (isNaN(budget) || budget <= 0)
-          return message.author.send("Please enter a valid numeric budget.");
+    const budget = parseInt(message.content);
 
-        draft.data.budget = budget;
-        draft.step = 2;
-        await draft.save();
+    if (isNaN(budget) || budget <= 0)
+      return message.author.send("Please enter a valid numeric budget.");
 
-        const listings = await Listing.find({
-          guildId: draft.guildId,
-          price: { $lte: budget },
-          status: "available"
-        }).limit(5);
+    draft.data.budget = budget;
+    draft.step = 2;
+    await draft.save();
 
-        if (!listings.length)
-          return message.author.send("No listings found within your budget.");
+    const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-        let reply = "Here are available listings:\n\n";
+    if (!guildConfig)
+      return message.author.send("Server configuration not found.");
 
-        listings.forEach(l => {
-          reply += `#${l.listingId} - $${l.price}\n`;
-        });
+    const listings = await Listing.find({
+      guildId: draft.guildId,
+      price: { $lte: budget },
+      status: "available"
+    }).limit(5);
 
-        reply += "\nTo start a deal, go to the server and run:\n`/interested listingid`";
+    let reply = "💰 Based on your budget:\n\n";
 
-        return message.author.send(reply);
+    // 🔹 Send listing links if found
+    if (listings.length) {
+
+      for (const l of listings) {
+
+        const messageLink =
+          `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}`;
+
+        reply += `🔹 **#${l.listingId}** - $${l.price}\n`;
+        reply += `🔗 ${messageLink}\n\n`;
       }
 
+    } else {
+      reply += "❌ No exact listings found within your budget.\n\n";
     }
+
+    // 🔹 Always send price range channel link
+    const range = getPriceRange(budget);
+    const channelId = guildConfig.priceChannels?.[range];
+
+    if (channelId) {
+      const channelLink =
+        `https://discord.com/channels/${draft.guildId}/${channelId}`;
+
+      reply += "📂 You can also browse this channel:\n";
+      reply += `${channelLink}\n\n`;
+    } else {
+      reply += "⚠ Price channel not configured for this range.\n\n";
+    }
+
+    reply += "To start a deal, go to the server and click 🛒 Buy Now button.";
+
+    return message.author.send(reply);
+  }
+}
+
 
   }
 };
+
