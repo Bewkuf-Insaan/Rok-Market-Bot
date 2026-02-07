@@ -27,18 +27,10 @@ const dealSchema = new mongoose.Schema({
   },
 
   status: {
-    type: String,
-    enum: [
-      "waiting_payment",
-      "account_check",
-      "secured",
-      "login_confirmed",
-      "hold_24h",
-      "completed",
-      "cancelled"
-    ],
-    default: "waiting_payment"
-  },
+  type: String,
+  enum: ["active", "completed", "cancelled"],
+  default: "active"
+},
 
   holdUntil: {
     type: Date,
@@ -62,4 +54,5 @@ const dealSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Deal", dealSchema);
+
 
