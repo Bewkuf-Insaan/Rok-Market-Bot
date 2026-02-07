@@ -113,100 +113,121 @@ module.exports = {
       // ==========================
 // BUY LISTING BUTTON
 // ==========================
-if (interaction.customId.startsWith("buy_")) {
+if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
 
-  const listingId = parseInt(interaction.customId.split("_")[1]);
+  try {
 
-  const Listing = require("../models/Listing");
-  const Guild = require("../models/Guild");
-  const Deal = require("../models/Deal");
+    const listingId = parseInt(interaction.customId.split("_")[1]);
 
-  const listing = await Listing.findOne({ listingId });
+    const Listing = require("../models/Listing");
+    const Guild = require("../models/Guild");
+    const Deal = require("../models/Deal");
+    const mmList = require("../config/mmList");
 
-  if (!listing || listing.status !== "available") {
-    return interaction.reply({
-      content: "❌ This listing is no longer available.",
+    const listing = await Listing.findOne({ listingId });
+
+    if (!listing || listing.status !== "available") {
+      return interaction.reply({
+        content: "❌ This listing is no longer available.",
+        ephemeral: true
+      });
+    }
+
+    const guildConfig = await Guild.findOne({ guildId: listing.guildId });
+    const guildObj = await client.guilds.fetch(listing.guildId);
+
+    const mmData = mmList[listing.mmName];
+
+    if (!mmData) {
+      return interaction.reply({
+        content: "❌ MM configuration error.",
+        ephemeral: true
+      });
+    }
+
+    // Lock listing
+    listing.status = "in_deal";
+    await listing.save();
+
+    // Create ticket
+    const ticket = await guildObj.channels.create({
+      name: `deal-${listingId}`,
+      type: 0,
+      parent: guildConfig.ticketCategoryId,
+      permissionOverwrites: [
+        {
+          id: guildObj.roles.everyone.id,
+          deny: ["ViewChannel"]
+        },
+        {
+          id: listing.sellerId,
+          allow: ["ViewChannel", "SendMessages"]
+        },
+        {
+          id: interaction.user.id,
+          allow: ["ViewChannel", "SendMessages"]
+        },
+        {
+          id: mmData.id,
+          allow: ["ViewChannel", "SendMessages"]
+        }
+      ]
+    });
+
+    await ticket.send(
+      `🛡 Deal Started for Listing #${listingId}\n\n` +
+      `Buyer: <@${interaction.user.id}>\n` +
+      `Seller: <@${listing.sellerId}>\n` +
+      `MM: <@${mmData.id}>`
+    );
+
+    // ✅ CREATE DEAL DOCUMENT
+    await Deal.create({
+      listingId,
+      guildId: listing.guildId,
+      channelId: ticket.id,
+      buyerId: interaction.user.id,
+      sellerId: listing.sellerId,
+      mmId: mmData.id,
+      status: "started",
+      createdAt: new Date()
+    });
+
+    // Disable button
+    const channel = await client.channels.fetch(listing.channelId);
+    const message = await channel.messages.fetch(listing.messageId);
+
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`buy_${listingId}`)
+        .setLabel("🔒 In Deal")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+    await message.edit({ components: [disabledRow] });
+
+    await interaction.reply({
+      content: `✅ Deal ticket created: ${ticket}`,
       ephemeral: true
     });
+
+  } catch (err) {
+    console.error("BUY BUTTON ERROR:", err);
+
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: "⚠ Something went wrong while starting the deal.",
+        ephemeral: true
+      });
+    }
   }
-
-  // 🔒 Lock listing (anti double deal)
-  listing.status = "in_deal";
-await listing.save();
-
-// 🔒 Disable Buy Button
-const channel = await client.channels.fetch(listing.channelId);
-const message = await channel.messages.fetch(listing.messageId);
-
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
-const disabledRow = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId(`buy_${listingId}`)
-    .setLabel("🔒 In Deal")
-    .setStyle(ButtonStyle.Secondary)
-    .setDisabled(true)
-);
-
-await message.edit({
-  components: [disabledRow]
-});
-
-
-  const guild = await Guild.findOne({ guildId: listing.guildId });
-
-  const guildObj = await client.guilds.fetch(listing.guildId);
-
-  const ticket = await guildObj.channels.create({
-    name: `deal-${listingId}`,
-    type: 0,
-    parent: guild.ticketCategoryId,
-    permissionOverwrites: [
-      {
-        id: guildObj.roles.everyone.id,
-        deny: ["ViewChannel"]
-      },
-      {
-        id: listing.sellerId,
-        allow: ["ViewChannel", "SendMessages"]
-      },
-      {
-        id: interaction.user.id,
-        allow: ["ViewChannel", "SendMessages"]
-      },
-      {
-        id: require("../config/mmList")[listing.mmName].id,
-        allow: ["ViewChannel", "SendMessages"]
-      }
-    ]
-  });
-
-  await ticket.send(
-    `🛡 Deal Started for Listing #${listingId}\n\n` +
-    `Buyer: <@${interaction.user.id}>\n` +
-    `Seller: <@${listing.sellerId}>\n` +
-    `MM: <@${require("../config/mmList")[listing.mmName].id}>`
-  );
-
- await Deal.create({
-  listingId,
-  guildId: listing.guildId,
-  buyerId: interaction.user.id,
-  sellerId: listing.sellerId,
-  channelId: ticket.id,
-  mmId: require("../config/mmList")[listing.mmName].id,
-  status: "started",
-  createdAt: new Date()
-});
-
-
-  await interaction.reply({
-    content: `✅ Deal ticket created: ${ticket}`,
-    ephemeral: true
-  });
 }
     }
   }
 };
+
 
 
