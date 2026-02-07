@@ -188,15 +188,16 @@ await message.edit({
     `MM: <@${require("../config/mmList")[listing.mmName].id}>`
   );
 
-  await Deal.create({
-    listingId,
-    guildId: listing.guildId,
-    buyerId: interaction.user.id,
-    sellerId: listing.sellerId,
-    mmId: require("../config/mmList")[listing.mmName].id,
-    status: "started",
-    createdAt: new Date()
-  });
+ await Deal.create({
+  listingId,
+  guildId: listing.guildId,
+  buyerId: interaction.user.id,
+  sellerId: listing.sellerId,
+  mmId: require("../config/mmList")[listing.mmName].id,
+  status: "started",
+  createdAt: new Date()
+});
+
 
   await interaction.reply({
     content: `✅ Deal ticket created: ${ticket}`,
@@ -206,3 +207,4 @@ await message.edit({
     }
   }
 };
+
