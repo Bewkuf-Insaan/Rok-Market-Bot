@@ -89,5 +89,14 @@ await MMProfile.findOneAndUpdate(
     await interaction.channel.permissionOverwrites.edit(interaction.guild.id, {
       ViewChannel: false
     });
+    setTimeout(async () => {
+  try {
+    await interaction.channel.delete();
+  } catch (err) {
+    console.error("Ticket delete error:", err);
+  }
+}, 3000); // delete after 3 seconds
+
   }
 };
+
