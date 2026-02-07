@@ -12,9 +12,10 @@ module.exports = [
     whatsapp: "+212XXXXXXXX"
   },
   {
-    name: "Aries",
-    userId: "607488303150792715",
+    name: "Mr Edd",
+    userId: "537505308256370688",
     country: "Indonesia",
     whatsapp: "+91XXXXXXXX"
   }
 ];
+
