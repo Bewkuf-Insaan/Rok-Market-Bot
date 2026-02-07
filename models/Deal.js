@@ -1,12 +1,6 @@
 const mongoose = require("mongoose");
 
 const dealSchema = new mongoose.Schema({
-  dealId: {
-    type: String,
-    required: true,
-    unique: true
-  },
-
   listingId: {
     type: Number,
     required: true
@@ -68,3 +62,4 @@ const dealSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Deal", dealSchema);
+
