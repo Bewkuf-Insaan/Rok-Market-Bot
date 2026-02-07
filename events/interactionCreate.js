@@ -115,6 +115,8 @@ module.exports = {
 // ==========================
 if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
 
+  await interaction.deferReply({ ephemeral: true });
+
   try {
 
     const listingId = parseInt(interaction.customId.split("_")[1]);
@@ -127,9 +129,8 @@ if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
     const listing = await Listing.findOne({ listingId });
 
     if (!listing || listing.status !== "available") {
-      return interaction.reply({
-        content: "❌ This listing is no longer available.",
-        ephemeral: true
+      return interaction.editReply({
+        content: "❌ This listing is no longer available."
       });
     }
 
@@ -139,9 +140,8 @@ if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
     const mmData = mmList[listing.mmName];
 
     if (!mmData) {
-      return interaction.reply({
-        content: "❌ MM configuration error.",
-        ephemeral: true
+      return interaction.editReply({
+        content: "❌ MM configuration error."
       });
     }
 
@@ -181,22 +181,16 @@ if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
       `MM: <@${mmData.id}>`
     );
 
-    // ✅ CREATE DEAL DOCUMENT
-   const getNextDealId = require("../utils/generateDealId");
-
-const dealId = await getNextDealId();
-
-await Deal.create({
-  dealId,
-  listingId,
-  guildId: listing.guildId,
-  channelId: ticket.id,
-  buyerId: interaction.user.id,
-  sellerId: listing.sellerId,
-  mmId: mmData.id,
-  status: "active"
-});
-
+    // Create Deal Document
+    await Deal.create({
+      listingId,
+      guildId: listing.guildId,
+      channelId: ticket.id,
+      buyerId: interaction.user.id,
+      sellerId: listing.sellerId,
+      mmId: mmData.id,
+      status: "active"
+    });
 
     // Disable button
     const channel = await client.channels.fetch(listing.channelId);
@@ -214,25 +208,22 @@ await Deal.create({
 
     await message.edit({ components: [disabledRow] });
 
-    await interaction.reply({
-      content: `✅ Deal ticket created: ${ticket}`,
-      ephemeral: true
+    await interaction.editReply({
+      content: `✅ Deal ticket created: ${ticket}`
     });
 
   } catch (err) {
     console.error("BUY BUTTON ERROR:", err);
 
-    if (!interaction.replied) {
-      await interaction.reply({
-        content: "⚠ Something went wrong while starting the deal.",
-        ephemeral: true
-      });
-    }
+    await interaction.editReply({
+      content: "⚠ Something went wrong while starting the deal."
+    });
   }
 }
     }
   }
 };
+
 
 
 
