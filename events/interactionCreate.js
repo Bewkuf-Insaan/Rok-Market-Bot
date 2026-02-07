@@ -193,6 +193,7 @@ await message.edit({
   guildId: listing.guildId,
   buyerId: interaction.user.id,
   sellerId: listing.sellerId,
+  channelId: ticket.id,
   mmId: require("../config/mmList")[listing.mmName].id,
   status: "started",
   createdAt: new Date()
@@ -207,4 +208,5 @@ await message.edit({
     }
   }
 };
+
 
