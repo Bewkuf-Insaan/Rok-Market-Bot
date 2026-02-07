@@ -10,8 +10,9 @@ module.exports = {
     fee: 10
   },
 
-  Aries: {
+  MrEdd: {
     id: "537505308256370688",
     fee: 10
   }
 };
+
