@@ -182,16 +182,21 @@ if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
     );
 
     // ✅ CREATE DEAL DOCUMENT
-    await Deal.create({
-      listingId,
-      guildId: listing.guildId,
-      channelId: ticket.id,
-      buyerId: interaction.user.id,
-      sellerId: listing.sellerId,
-      mmId: mmData.id,
-      status: "started",
-      createdAt: new Date()
-    });
+   const getNextDealId = require("../utils/generateDealId");
+
+const dealId = await getNextDealId();
+
+await Deal.create({
+  dealId,
+  listingId,
+  guildId: listing.guildId,
+  channelId: ticket.id,
+  buyerId: interaction.user.id,
+  sellerId: listing.sellerId,
+  mmId: mmData.id,
+  status: "active"
+});
+
 
     // Disable button
     const channel = await client.channels.fetch(listing.channelId);
@@ -228,6 +233,7 @@ if (interaction.isButton() && interaction.customId.startsWith("buy_")) {
     }
   }
 };
+
 
 
 
