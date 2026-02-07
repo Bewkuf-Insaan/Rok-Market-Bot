@@ -26,9 +26,15 @@ const dealSchema = new mongoose.Schema({
     required: true
   },
 
-  status: {
+ status: {
   type: String,
-  enum: ["active", "completed", "cancelled"],
+  enum: [
+    "active",
+    "account_check",
+    "payment_confirmed",
+    "completed",
+    "cancelled"
+  ],
   default: "active"
 },
 
@@ -54,5 +60,6 @@ const dealSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Deal", dealSchema);
+
 
 
