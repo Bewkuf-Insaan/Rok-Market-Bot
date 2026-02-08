@@ -16,43 +16,39 @@ module.exports = {
 
   async execute(interaction, client) {
 
-    // ==============================
-    // SLASH COMMANDS
-    // ==============================
+    /* ==============================
+       SLASH COMMANDS
+    ============================== */
     if (interaction.isChatInputCommand()) {
-
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
 
       try {
-        if (interaction.guild) {
-          if (
-            interaction.commandName !== "addsub" &&
-            interaction.commandName !== "setup"
-          ) {
-            const validSub = await checkSubscription(interaction.guild.id);
-            if (!validSub) {
-              return interaction.reply({
-                content: "❌ This server does not have an active subscription.",
-                flags: 64
-              });
-            }
+        if (
+          interaction.guild &&
+          interaction.commandName !== "addsub" &&
+          interaction.commandName !== "setup"
+        ) {
+          const validSub = await checkSubscription(interaction.guild.id);
+          if (!validSub) {
+            return interaction.reply({
+              content: "❌ This server does not have an active subscription.",
+              flags: 64
+            });
           }
         }
 
         await command.execute(interaction, client);
-
-      } catch (error) {
-        console.error(error);
-
+      } catch (err) {
+        console.error(err);
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp({
-            content: "There was an error executing this command.",
+            content: "❌ Command error.",
             flags: 64
           });
         } else {
           await interaction.reply({
-            content: "There was an error executing this command.",
+            content: "❌ Command error.",
             flags: 64
           });
         }
@@ -60,33 +56,39 @@ module.exports = {
       return;
     }
 
-    // ==============================
-    // BUTTONS
-    // ==============================
+    /* ==============================
+       BUTTONS
+    ============================== */
     if (!interaction.isButton()) return;
 
-    // ==============================
-    // DM / SERVER PERMISSION LOGIC
-    // ==============================
-    const dmAllowed =
-      interaction.customId.startsWith("sell_") ||
-      interaction.customId.startsWith("buytype_");
+    const id = interaction.customId;
 
+    /* ==============================
+       BUTTON LOCATION RULES
+    ============================== */
+
+    // DM allowed buttons
+    const dmAllowed =
+      id.startsWith("sell_") ||
+      id.startsWith("buytype_");
+
+    // Server-only buttons
     const serverOnly =
-      interaction.customId.startsWith("buy_"); // listing buy buttons
+      id === "seller" ||
+      id === "buyer" ||
+      id.startsWith("buy_");
 
     if (!interaction.guild && serverOnly && !dmAllowed) {
       return interaction.reply({
-        content: "Please use this button inside the server.",
+        content: "❌ Please use this button inside the server.",
         flags: 64
       });
     }
 
-    // =========================
-    // SELLER BUTTON (SERVER)
-    // =========================
-    if (interaction.customId === "seller") {
-
+    /* =========================
+       SELLER START (SERVER)
+    ========================= */
+    if (id === "seller") {
       await startSellerDraft(interaction.user.id, interaction.guild.id);
 
       const row = new ActionRowBuilder().addComponents(
@@ -110,58 +112,46 @@ module.exports = {
       });
 
       await interaction.user.send({
-        content: "**Welcome Seller!**\n\nWhat do you want to sell?",
+        content: "**Welcome Seller!**\nWhat do you want to sell?",
         components: [row]
       });
-
       return;
     }
 
-    // =========================
-    // SELL TYPE SELECTION (DM)
-    // =========================
-    if (interaction.customId.startsWith("sell_")) {
-
+    /* =========================
+       SELL TYPE (DM)
+    ========================= */
+    if (id.startsWith("sell_")) {
       const draft = await Draft.findOne({ userId: interaction.user.id });
       if (!draft) {
         return interaction.reply({
-          content: "❌ Seller session expired. Click Seller again.",
+          content: "❌ Seller session expired.",
           flags: 64
         });
       }
 
       draft.step = 1;
       draft.data = {};
+      draft.sellType = id.replace("sell_", "");
+      await draft.save();
 
-      if (interaction.customId === "sell_account") {
-        draft.sellType = "account";
-        await draft.save();
-        await interaction.user.send("Account Season Tag:");
-      }
+      const firstQuestion = {
+        account: "Account Season Tag:",
+        resources: "🌾 Enter **Food** amount:",
+        kingdom: "Season (e.g. Season of Conquest):"
+      };
 
-      if (interaction.customId === "sell_resources") {
-        draft.sellType = "resources";
-        await draft.save();
-        await interaction.user.send("🌾 Enter **Food** amount:");
-      }
-
-      if (interaction.customId === "sell_kingdom") {
-        draft.sellType = "kingdom";
-        await draft.save();
-        await interaction.user.send("Season (e.g. Season of Conquest):");
-      }
-
+      await interaction.user.send(firstQuestion[draft.sellType]);
       return interaction.reply({
-        content: "✅ Answer the above question.",
+        content: "✅ Answer the question in DM.",
         flags: 64
       });
     }
 
-    // =========================
-    // BUYER BUTTON (SERVER)
-    // =========================
-    if (interaction.customId === "buyer") {
-
+    /* =========================
+       BUYER START (SERVER)
+    ========================= */
+    if (id === "buyer") {
       await Draft.findOneAndUpdate(
         { userId: interaction.user.id },
         {
@@ -198,45 +188,47 @@ module.exports = {
         content: "**What do you want to buy?**",
         components: [row]
       });
-
       return;
     }
 
-    // =========================
-    // BUY TYPE SELECTION (DM)
-    // =========================
-    if (interaction.customId.startsWith("buytype_")) {
-
-      const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft || draft.role !== "buyer") {
+    /* =========================
+       BUY TYPE (DM)
+    ========================= */
+    if (id.startsWith("buytype_")) {
+      if (interaction.guild) {
         return interaction.reply({
-          content: "❌ Buyer session expired. Click Buyer again.",
+          content: "❌ Use this in DM.",
           flags: 64
         });
       }
 
-      draft.buyType = interaction.customId.replace("buytype_", "");
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft || draft.role !== "buyer") {
+        return interaction.reply({
+          content: "❌ Buyer session expired.",
+          flags: 64
+        });
+      }
+
+      draft.buyType = id.replace("buytype_", "");
       draft.step = 1;
       await draft.save();
 
       await interaction.user.send("💰 Enter your budget in USD (numbers only):");
-
       return interaction.reply({
-        content: "✅ Answer the above question.",
+        content: "✅ Answer in DM.",
         flags: 64
       });
     }
 
-    // ==========================
-    // BUY LISTING BUTTON (SERVER)
-    // ==========================
-    if (interaction.customId.startsWith("buy_")) {
-
+    /* ==========================
+       BUY NOW → CREATE TICKET
+    ========================== */
+    if (id.startsWith("buy_")) {
       await interaction.deferReply({ flags: 64 });
 
       try {
-        const listingId = parseInt(interaction.customId.split("_")[1]);
-
+        const listingId = parseInt(id.split("_")[1]);
         const Listing = require("../models/Listing");
         const Guild = require("../models/Guild");
         const Deal = require("../models/Deal");
@@ -244,52 +236,52 @@ module.exports = {
 
         const listing = await Listing.findOne({ listingId });
         if (!listing || listing.status !== "available") {
-          return interaction.editReply({
-            content: "❌ This listing is no longer available."
-          });
+          return interaction.editReply("❌ Listing not available.");
         }
 
         const guildConfig = await Guild.findOne({ guildId: listing.guildId });
-        const guildObj = await client.guilds.fetch(listing.guildId);
+        const guild = await client.guilds.fetch(listing.guildId);
+        const mm = mmList[listing.mmName];
 
-        const mmData = mmList[listing.mmName];
-        if (!mmData) {
-          return interaction.editReply({
-            content: "❌ MM configuration error."
-          });
-        }
+        if (!mm) return interaction.editReply("❌ MM config error.");
 
         listing.status = "in_deal";
         await listing.save();
 
-        const ticket = await guildObj.channels.create({
+        const ticket = await guild.channels.create({
           name: `deal-${listingId}`,
           type: ChannelType.GuildText,
           parent: guildConfig.ticketCategoryId,
           permissionOverwrites: [
-            { id: guildObj.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
             { id: listing.sellerId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
             { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-            { id: mmData.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+            { id: mm.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
           ]
         });
 
         await ticket.send(
-          `🛡 **Deal Started for Listing #${listingId}**\n\n` +
+          `🛡 **Deal Started**\n\n` +
           `Buyer: <@${interaction.user.id}>\n` +
           `Seller: <@${listing.sellerId}>\n` +
-          `MM: <@${mmData.id}>`
+          `MM: <@${mm.id}>`
         );
 
-        await interaction.editReply({
-          content: `✅ Deal ticket created: ${ticket}`
+        await Deal.create({
+          listingId,
+          guildId: listing.guildId,
+          channelId: ticket.id,
+          buyerId: interaction.user.id,
+          sellerId: listing.sellerId,
+          mmId: mm.id,
+          status: "waiting_payment"
         });
 
+        return interaction.editReply(`✅ Deal ticket created: ${ticket}`);
+
       } catch (err) {
-        console.error("BUY BUTTON ERROR:", err);
-        await interaction.editReply({
-          content: "⚠ Something went wrong while starting the deal."
-        });
+        console.error("BUY ERROR:", err);
+        return interaction.editReply("⚠ Failed to start deal.");
       }
     }
   }
