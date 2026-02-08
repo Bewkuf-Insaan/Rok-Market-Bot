@@ -124,7 +124,7 @@ module.exports = {
 
           data.screenshots = message.attachments.map(a => a.url);
           return updateDraft(message.author.id, 19, data)
-            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries"));
+            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries (Run /mm-info command in server to know about them)"));
 
         case 19:
           return finalizeListing(message, client, draft, data);
@@ -181,7 +181,7 @@ module.exports = {
 
           data.price = price;
           return updateDraft(message.author.id, 9, data)
-            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries"));
+            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries (Run /mm-info command in server to know about them)"));
         }
 
         case 9:
@@ -236,7 +236,7 @@ module.exports = {
 
           data.price = price;
           return updateDraft(message.author.id, 9, data)
-            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries"));
+            .then(() => message.author.send("Choose MM: Arsyu / Brahim / Aries (Run /mm-info command in server to know about them)"));
         }
 
         case 9:
@@ -247,35 +247,53 @@ module.exports = {
     // =================================================
     // BUYER FLOW
     // =================================================
-    if (draft.role === "buyer" && draft.step === 1) {
-      const budget = parseInt(message.content);
-      if (isNaN(budget) || budget <= 0)
-        return message.author.send("Please enter a valid numeric budget.");
+    // =================================================
+// BUYER FLOW (FIXED)
+// =================================================
+if (draft.role === "buyer" && draft.step === 1) {
 
-      draft.data.budget = budget;
-      draft.step = 2;
-      await draft.save();
+  const budget = parseInt(message.content);
+  if (isNaN(budget) || budget <= 0)
+    return message.author.send("Please enter a valid numeric budget.");
 
-      const listings = await Listing.find({
-        guildId: draft.guildId,
-        price: { $lte: budget },
-        status: "available",
-        sellType: draft.buyType
-      }).limit(5);
+  draft.data.budget = budget;
+  draft.step = 2;
+  await draft.save();
 
-      let reply = `💰 **${draft.buyType.toUpperCase()} listings for your budget:**\n\n`;
+  const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-      if (listings.length) {
-        for (const l of listings) {
-          reply += `🔹 **#${l.listingId}** — $${l.price}\nhttps://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
-        }
-      } else {
-        reply += "❌ No listings found.\n\n";
-      }
+  const listings = await Listing.find({
+    guildId: draft.guildId,
+    price: { $lte: budget },
+    status: "available",
+    sellType: draft.buyType
+  }).limit(5);
 
-      reply += "Click 🛒 **Buy Now** to start a deal.";
-      return message.author.send(reply);
+  let reply = `💰 **${draft.buyType.toUpperCase()} listings for your budget:**\n\n`;
+
+  if (listings.length) {
+    for (const l of listings) {
+      reply +=
+        `🔹 **#${l.listingId}** — $${l.price}\n` +
+        `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
     }
+  } else {
+    reply += "❌ No listings found within your budget.\n\n";
+  }
+
+  // Extra browse links
+  if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
+    reply += `🌾 Browse more resources:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+  }
+
+  if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
+    reply += `🏰 Browse more kingdoms:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+  }
+
+  reply += "Click 🛒 **Buy Now** on any listing to start a deal.";
+
+  return message.author.send(reply);
+}
   }
 };
 
@@ -347,3 +365,4 @@ async function finalizeListing(message, client, draft, data) {
   await deleteDraft(message.author.id);
   return message.author.send("✅ Listing posted successfully!");
 }
+
