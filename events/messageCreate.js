@@ -263,7 +263,7 @@ module.exports = {
         guildId: draft.guildId,
         price: { $lte: budget },
         status: "available",
-        "data.sellType": draft.buyType
+        sellType: draft.buyType
       };
 
       const listings = await Listing.find(query).limit(5);
@@ -296,7 +296,7 @@ module.exports = {
 };
 
 // =================================================
-// SHARED FINALIZE FUNCTION
+// SHARED FINALIZE FUNCTION (FIXED CHANNEL LOGIC)
 // =================================================
 async function finalizeListing(message, client, draft, data) {
   const mmName = message.content.trim();
@@ -309,8 +309,31 @@ async function finalizeListing(message, client, draft, data) {
   const listingId = await getNextListingId();
   const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-  const range = getPriceRange(data.price);
-  const channel = await client.channels.fetch(guildConfig.priceChannels[range]);
+  let channelId;
+
+  // 🧑‍💼 Account → price channels
+  if (draft.sellType === "account") {
+    const range = getPriceRange(data.price);
+    channelId = guildConfig.priceChannels?.[range];
+  }
+
+  // 🌾 Resources → resource channel
+  if (draft.sellType === "resources") {
+    channelId = guildConfig.resourceSellChannelId;
+  }
+
+  // 🏰 Kingdom → kingdom channel
+  if (draft.sellType === "kingdom") {
+    channelId = guildConfig.kingdomSellChannelId;
+  }
+
+  if (!channelId) {
+    return message.author.send(
+      "❌ Sell channel not configured. Please contact an admin."
+    );
+  }
+
+  const channel = await client.channels.fetch(channelId);
 
   const embed = buildListingEmbed(listingId, data);
 
@@ -333,6 +356,7 @@ async function finalizeListing(message, client, draft, data) {
     listingId,
     guildId: draft.guildId,
     sellerId: message.author.id,
+    sellType: draft.sellType, // IMPORTANT
     mmName: data.mm,
     price: data.price,
     mmFee: data.mmFee,
