@@ -245,10 +245,9 @@ module.exports = {
     }
 
     // =================================================
-    // BUYER FLOW (ACCOUNT / RESOURCES / KINGDOM)
+    // BUYER FLOW
     // =================================================
     if (draft.role === "buyer" && draft.step === 1) {
-
       const budget = parseInt(message.content);
       if (isNaN(budget) || budget <= 0)
         return message.author.send("Please enter a valid numeric budget.");
@@ -257,46 +256,31 @@ module.exports = {
       draft.step = 2;
       await draft.save();
 
-      const guildConfig = await Guild.findOne({ guildId: draft.guildId });
-
-      const query = {
+      const listings = await Listing.find({
         guildId: draft.guildId,
         price: { $lte: budget },
         status: "available",
         sellType: draft.buyType
-      };
-
-      const listings = await Listing.find(query).limit(5);
+      }).limit(5);
 
       let reply = `💰 **${draft.buyType.toUpperCase()} listings for your budget:**\n\n`;
 
       if (listings.length) {
         for (const l of listings) {
-          const link =
-            `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}`;
-          reply += `🔹 **#${l.listingId}** — $${l.price}\n${link}\n\n`;
+          reply += `🔹 **#${l.listingId}** — $${l.price}\nhttps://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
         }
       } else {
-        reply += "❌ No listings found within your budget.\n\n";
+        reply += "❌ No listings found.\n\n";
       }
 
-      if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
-        reply += `🌾 Browse more resources:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
-      }
-
-      if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
-        reply += `🏰 Browse more kingdoms:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
-      }
-
-      reply += "To start a deal, click 🛒 **Buy Now** on any listing.";
-
+      reply += "Click 🛒 **Buy Now** to start a deal.";
       return message.author.send(reply);
     }
   }
 };
 
 // =================================================
-// SHARED FINALIZE FUNCTION (FIXED CHANNEL LOGIC)
+// FINALIZE LISTING (CORRECT & COMPLETE)
 // =================================================
 async function finalizeListing(message, client, draft, data) {
   const mmName = message.content.trim();
@@ -311,31 +295,24 @@ async function finalizeListing(message, client, draft, data) {
 
   let channelId;
 
-  // 🧑‍💼 Account → price channels
   if (draft.sellType === "account") {
     const range = getPriceRange(data.price);
     channelId = guildConfig.priceChannels?.[range];
   }
-
-  // 🌾 Resources → resource channel
   if (draft.sellType === "resources") {
     channelId = guildConfig.resourceSellChannelId;
   }
-
-  // 🏰 Kingdom → kingdom channel
   if (draft.sellType === "kingdom") {
     channelId = guildConfig.kingdomSellChannelId;
   }
 
-  if (!channelId) {
-    return message.author.send(
-      "❌ Sell channel not configured. Please contact an admin."
-    );
-  }
+  if (!channelId)
+    return message.author.send("❌ Sell channel not configured.");
 
   const channel = await client.channels.fetch(channelId);
 
-  const embed = buildListingEmbed(listingId, data);
+  // 🔥 IMPORTANT FIX
+  const embed = buildListingEmbed(listingId, data, draft.sellType);
 
   const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -356,7 +333,7 @@ async function finalizeListing(message, client, draft, data) {
     listingId,
     guildId: draft.guildId,
     sellerId: message.author.id,
-    sellType: draft.sellType, // IMPORTANT
+    sellType: draft.sellType,
     mmName: data.mm,
     price: data.price,
     mmFee: data.mmFee,
