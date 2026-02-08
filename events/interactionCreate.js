@@ -15,9 +15,9 @@ module.exports = {
 
   async execute(interaction, client) {
 
-    /* ==============================
+    /* =====================================================
        SLASH COMMANDS
-    ============================== */
+    ===================================================== */
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
@@ -48,16 +48,16 @@ module.exports = {
       return;
     }
 
-    /* ==============================
+    /* =====================================================
        BUTTONS
-    ============================== */
+    ===================================================== */
     if (!interaction.isButton()) return;
 
     const id = interaction.customId;
 
-    /* ==============================
-       BUTTON LOCATION RULES (FIXED)
-    ============================== */
+    /* =====================================================
+       LOCATION RULES (CRITICAL FIX)
+    ===================================================== */
 
     const dmAllowed =
       id.startsWith("sell_") ||
@@ -66,7 +66,7 @@ module.exports = {
     const serverOnly =
       id === "seller" ||
       id === "buyer" ||
-      /^buy_\d+$/.test(id); // 🔥 ONLY numeric buy buttons
+      /^buy_\d+$/.test(id); // only real buy buttons
 
     if (!interaction.guild && serverOnly && !dmAllowed) {
       return interaction.reply({
@@ -75,9 +75,9 @@ module.exports = {
       });
     }
 
-    /* =========================
+    /* =====================================================
        SELLER START (SERVER)
-    ========================= */
+    ===================================================== */
     if (id === "seller") {
       await startSellerDraft(interaction.user.id, interaction.guild.id);
 
@@ -96,49 +96,53 @@ module.exports = {
       return;
     }
 
-    /* =========================
+    /* =====================================================
        SELL TYPE (DM)
-    ========================= */
+    ===================================================== */
     if (id.startsWith("sell_")) {
-      const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft) return interaction.reply({ content: "❌ Session expired.", flags: 64 });
+      await interaction.deferReply({ flags: 64 });
 
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft) return interaction.editReply("❌ Seller session expired.");
+
+      draft.sellType = id.replace("sell_", "");
       draft.step = 1;
       draft.data = {};
-      draft.sellType = id.replace("sell_", "");
       await draft.save();
 
-      const q = {
+      const firstQuestion = {
         account: "Account Season Tag:",
         resources: "🌾 Enter Food amount:",
-        kingdom: "Season:"
+        kingdom: "Season (e.g. SOC / KVK1):"
       };
 
-      await interaction.user.send(q[draft.sellType]);
-      return interaction.reply({ content: "✅ Answer in DM.", flags: 64 });
+      await interaction.user.send(firstQuestion[draft.sellType]);
+      return interaction.editReply("✅ Answer in DM.");
     }
 
-    /* =========================
+    /* =====================================================
        BUYER START (SERVER)
-    ========================= */
+    ===================================================== */
     if (id === "buyer") {
+
       let draft = await Draft.findOne({ userId: interaction.user.id });
 
-if (!draft) {
-  draft = await Draft.create({
-    userId: interaction.user.id,
-    guildId: interaction.guild.id,
-    role: "buyer",
-    step: 0,
-    data: {}
-  });
-} else {
-  draft.role = "buyer";
-  draft.guildId = interaction.guild.id;
-  // ❌ DO NOT reset buyType or data here
-  await draft.save();
-}
-
+      if (!draft) {
+        draft = await Draft.create({
+          userId: interaction.user.id,
+          guildId: interaction.guild.id,
+          role: "buyer",
+          step: 0,
+          data: {}
+        });
+      } else {
+        draft.role = "buyer";
+        draft.guildId = interaction.guild.id;
+        draft.step = 0;
+        draft.buyType = null;
+        draft.data = {};
+        await draft.save();
+      }
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("buytype_account").setLabel("🧑‍💼 Account").setStyle(ButtonStyle.Primary),
@@ -155,37 +159,32 @@ if (!draft) {
       return;
     }
 
-    /* =========================
-       BUY TYPE (DM)
-    ========================= */
+    /* =====================================================
+       BUY TYPE (DM) — FIXED
+    ===================================================== */
     if (id.startsWith("buytype_")) {
+      await interaction.deferReply({ flags: 64 });
 
-  // ACK FIRST (IMPORTANT)
-  await interaction.deferReply({ flags: 64 });
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft || draft.role !== "buyer") {
+        return interaction.editReply("❌ Buyer session expired.");
+      }
 
-  const draft = await Draft.findOne({ userId: interaction.user.id });
-  if (!draft || draft.role !== "buyer") {
-    return interaction.editReply("❌ Buyer session expired. Click Buyer again.");
-  }
+      draft.buyType = id.replace("buytype_", "");
+      draft.step = 1;
+      await draft.save();
 
-  draft.buyType = id.replace("buytype_", "");
-  draft.step = 1;
-  await draft.save();
+      await interaction.user.send(
+        `✅ You chose **${draft.buyType.toUpperCase()}**.\n\n` +
+        "💰 Enter your budget in USD (numbers only):"
+      );
 
-  // DM user
-  await interaction.user.send(
-    `✅ You chose **${draft.buyType.toUpperCase()}**.\n\n` +
-    "💰 Enter your budget in USD (numbers only):"
-  );
+      return interaction.editReply("📩 Check your DMs.");
+    }
 
-  return interaction.editReply("📩 Check your DMs.");
-}
-
-
-
-    /* ==========================
-       BUY NOW (SERVER ONLY)
-    ========================== */
+    /* =====================================================
+       BUY NOW (SERVER)
+    ===================================================== */
     if (/^buy_\d+$/.test(id)) {
       await interaction.deferReply({ flags: 64 });
 
@@ -203,6 +202,7 @@ if (!draft) {
         const guildConfig = await Guild.findOne({ guildId: listing.guildId });
         const guild = await client.guilds.fetch(listing.guildId);
         const mm = mmList[listing.mmName];
+        if (!mm) return interaction.editReply("❌ MM config error.");
 
         listing.status = "in_deal";
         await listing.save();
@@ -220,7 +220,10 @@ if (!draft) {
         });
 
         await ticket.send(
-          `🛡 **Deal Started**\n\nBuyer: <@${interaction.user.id}>\nSeller: <@${listing.sellerId}>\nMM: <@${mm.id}>`
+          `🛡 **Deal Started**\n\n` +
+          `Buyer: <@${interaction.user.id}>\n` +
+          `Seller: <@${listing.sellerId}>\n` +
+          `MM: <@${mm.id}>`
         );
 
         await Deal.create({
@@ -234,14 +237,10 @@ if (!draft) {
         });
 
         return interaction.editReply(`✅ Deal ticket created: ${ticket}`);
-      } catch (e) {
-        console.error(e);
+      } catch (err) {
+        console.error(err);
         return interaction.editReply("⚠ Failed to start deal.");
       }
     }
   }
 };
-
-
-
-
