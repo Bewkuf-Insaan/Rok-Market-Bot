@@ -122,17 +122,23 @@ module.exports = {
        BUYER START (SERVER)
     ========================= */
     if (id === "buyer") {
-      await Draft.findOneAndUpdate(
-        { userId: interaction.user.id },
-        {
-          userId: interaction.user.id,
-          guildId: interaction.guild.id,
-          role: "buyer",
-          step: 0,
-          data: {}
-        },
-        { upsert: true }
-      );
+      let draft = await Draft.findOne({ userId: interaction.user.id });
+
+if (!draft) {
+  draft = await Draft.create({
+    userId: interaction.user.id,
+    guildId: interaction.guild.id,
+    role: "buyer",
+    step: 0,
+    data: {}
+  });
+} else {
+  draft.role = "buyer";
+  draft.guildId = interaction.guild.id;
+  // ❌ DO NOT reset buyType or data here
+  await draft.save();
+}
+
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("buytype_account").setLabel("🧑‍💼 Account").setStyle(ButtonStyle.Primary),
@@ -242,4 +248,5 @@ module.exports = {
     }
   }
 };
+
 
