@@ -168,3 +168,4 @@ module.exports = {
   getListingById,
   markListingAsSold
 };
+
