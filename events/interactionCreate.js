@@ -153,17 +153,36 @@ module.exports = {
        BUY TYPE (DM)
     ========================= */
     if (id.startsWith("buytype_")) {
-      const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft || draft.role !== "buyer")
-        return interaction.reply({ content: "❌ Session expired.", flags: 64 });
+  if (interaction.guild) {
+    return interaction.reply({
+      content: "❌ Use this in DM.",
+      flags: 64
+    });
+  }
 
-      draft.buyType = id.replace("buytype_", "");
-      draft.step = 1;
-      await draft.save();
+  const draft = await Draft.findOne({ userId: interaction.user.id });
+  if (!draft || draft.role !== "buyer") {
+    return interaction.reply({
+      content: "❌ Buyer session expired. Click Buyer again.",
+      flags: 64
+    });
+  }
 
-      await interaction.user.send("💰 Enter your budget in USD:");
-      return interaction.reply({ content: "✅ Answer in DM.", flags: 64 });
-    }
+  draft.buyType = id.replace("buytype_", "");
+  draft.step = 1;
+  draft.data = {}; // reset buyer data safely
+  await draft.save();
+
+  await interaction.user.send(
+    `💰 Enter your budget in USD (numbers only):`
+  );
+
+  return interaction.reply({
+    content: "✅ Check DM.",
+    flags: 64
+  });
+}
+
 
     /* ==========================
        BUY NOW (SERVER ONLY)
@@ -223,3 +242,4 @@ module.exports = {
     }
   }
 };
+
