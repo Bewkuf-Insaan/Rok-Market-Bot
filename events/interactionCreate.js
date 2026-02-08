@@ -148,7 +148,7 @@ module.exports = {
       }
 
       return interaction.reply({
-        content: "✅ Selection saved. Continue in DMs.",
+        content: "✅ Answer the Above Question.....",
         flags: 64
       });
     }
@@ -346,3 +346,4 @@ module.exports = {
     }
   }
 };
+
