@@ -24,7 +24,7 @@ module.exports = {
     const data = draft.data;
 
     // =================================================
-    // SELLER – ACCOUNT FLOW (UNCHANGED)
+    // SELLER – ACCOUNT FLOW
     // =================================================
     if (draft.role === "seller" && draft.sellType === "account") {
       switch (draft.step) {
@@ -132,7 +132,7 @@ module.exports = {
     }
 
     // =================================================
-    // SELLER – RESOURCES FLOW (FIXED)
+    // SELLER – RESOURCES FLOW
     // =================================================
     if (draft.role === "seller" && draft.sellType === "resources") {
       switch (draft.step) {
@@ -190,7 +190,7 @@ module.exports = {
     }
 
     // =================================================
-    // SELLER – KINGDOM FLOW (FIXED)
+    // SELLER – KINGDOM FLOW
     // =================================================
     if (draft.role === "seller" && draft.sellType === "kingdom") {
       switch (draft.step) {
@@ -243,11 +243,60 @@ module.exports = {
           return finalizeListing(message, client, draft, data);
       }
     }
+
+    // =================================================
+    // BUYER FLOW (ACCOUNT / RESOURCES / KINGDOM)
+    // =================================================
+    if (draft.role === "buyer" && draft.step === 1) {
+
+      const budget = parseInt(message.content);
+      if (isNaN(budget) || budget <= 0)
+        return message.author.send("Please enter a valid numeric budget.");
+
+      draft.data.budget = budget;
+      draft.step = 2;
+      await draft.save();
+
+      const guildConfig = await Guild.findOne({ guildId: draft.guildId });
+
+      const query = {
+        guildId: draft.guildId,
+        price: { $lte: budget },
+        status: "available",
+        "data.sellType": draft.buyType
+      };
+
+      const listings = await Listing.find(query).limit(5);
+
+      let reply = `💰 **${draft.buyType.toUpperCase()} listings for your budget:**\n\n`;
+
+      if (listings.length) {
+        for (const l of listings) {
+          const link =
+            `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}`;
+          reply += `🔹 **#${l.listingId}** — $${l.price}\n${link}\n\n`;
+        }
+      } else {
+        reply += "❌ No listings found within your budget.\n\n";
+      }
+
+      if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
+        reply += `🌾 Browse more resources:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+      }
+
+      if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
+        reply += `🏰 Browse more kingdoms:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+      }
+
+      reply += "To start a deal, click 🛒 **Buy Now** on any listing.";
+
+      return message.author.send(reply);
+    }
   }
 };
 
 // =================================================
-// SHARED FINALIZE FUNCTION (ALL SELL TYPES)
+// SHARED FINALIZE FUNCTION
 // =================================================
 async function finalizeListing(message, client, draft, data) {
   const mmName = message.content.trim();
