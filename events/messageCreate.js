@@ -47,12 +47,31 @@ module.exports = {
 
       const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-      const listings = await Listing.find({
-        guildId: draft.guildId,
-        sellType: draft.buyType,
-        price: { $lte: budget },
-        status: "available"
-      }).limit(5);
+      const minPrice = Math.max(0, budget - 100);
+const maxPrice = budget + 100;
+
+let listings = await Listing.find({
+  guildId: draft.guildId,
+  sellType: draft.buyType,
+  status: "available",
+  $expr: {
+    $and: [
+      { $gte: [{ $toInt: "$price" }, minPrice] },
+      { $lte: [{ $toInt: "$price" }, maxPrice] }
+    ]
+  }
+}).limit(10);
+
+// sort closest to buyer budget
+listings.sort(
+  (a, b) =>
+    Math.abs(Number(a.price) - budget) -
+    Math.abs(Number(b.price) - budget)
+);
+
+// keep top 5
+listings = listings.slice(0, 5);
+
 
       let reply = `💰 **${draft.buyType.toUpperCase()} listings under $${budget}:**\n\n`;
 
@@ -248,20 +267,21 @@ async function finalizeListing(message, client, draft, data) {
     }]
   });
 
-  await createListing({
-    listingId,
-    guildId: draft.guildId,
-    sellerId: message.author.id,
-    sellType: draft.sellType,
-    mmName: data.mm,
-    price: data.price,
-    mmFee: data.mmFee,
-    status: "available",
-    data,
-    screenshots: data.screenshots || [],
-    messageId: sent.id,
-    channelId: channel.id
-  });
+ await createListing({
+  listingId,
+  guildId: draft.guildId,
+  sellerId: message.author.id,
+  sellType: draft.sellType,
+  mmName: data.mm,
+  price: Number(data.price), // 🔥 FORCE NUMBER
+  mmFee: data.mmFee,
+  status: "available",
+  data,
+  screenshots: data.screenshots || [],
+  messageId: sent.id,
+  channelId: channel.id
+});
+
 
   await deleteDraft(message.author.id);
   return message.author.send("✅ Listing posted successfully!");
@@ -316,3 +336,4 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
