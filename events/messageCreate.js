@@ -25,126 +25,118 @@ module.exports = {
 
     const data = draft.data || {};
 
-    // =================================================
-    // SELLER – ACCOUNT FLOW
-    // =================================================
+    /* =================================================
+       SELLER – ACCOUNT
+    ================================================= */
     if (draft.role === "seller" && draft.sellType === "account") {
-      switch (draft.step) {
 
-        case 1: data.seasonTag = message.content; break;
-        case 2: data.detailsTag = message.content; break;
-        case 3: data.kingdom = message.content; break;
-        case 4: data.accountAge = message.content; break;
-        case 5: data.power = message.content; break;
-        case 6: data.kills = message.content; break;
-        case 7: data.vip = message.content; break;
-        case 8: data.castle = message.content; break;
-        case 9: data.passport = message.content; break;
-        case 10: data.commanders = message.content; break;
-        case 11: data.equipment = message.content; break;
-        case 12: data.citySkin = message.content; break;
-        case 13: data.goldhead = message.content; break;
-        case 14: data.bind = message.content; break;
-        case 15: data.receipts = message.content; break;
-        case 16: data.vipAccess = message.content; break;
+      if (draft.step === 17) {
+        const price = parseInt(message.content);
+        if (isNaN(price) || price <= 0)
+          return message.author.send("❌ Enter a valid numeric price.");
 
-        case 17: {
-          const price = parseInt(message.content);
-          if (isNaN(price) || price <= 0)
-            return message.author.send("❌ Enter a valid price.");
-          data.price = price;
-          await updateDraft(message.author.id, 18, data);
-          return message.author.send("Upload screenshots:");
-        }
-
-        case 18:
-          if (!message.attachments.size)
-            return message.author.send("❌ Upload screenshots.");
-          data.screenshots = message.attachments.map(a => a.url);
-          await updateDraft(message.author.id, 19, data);
-          return message.author.send("Choose MM: Arsyu / Brahim / Aries");
-
-        case 19:
-          return finalizeListing(message, client, draft, data);
+        data.price = price;
+        await updateDraft(message.author.id, 18, data);
+        return message.author.send("📸 Upload screenshots:");
       }
+
+      if (draft.step === 18) {
+        if (!message.attachments.size)
+          return message.author.send("❌ Please upload screenshots.");
+
+        data.screenshots = message.attachments.map(a => a.url);
+        await updateDraft(message.author.id, 19, data);
+        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+      }
+
+      if (draft.step === 19) {
+        return finalizeListing(message, client, draft, data);
+      }
+
+      const accountFields = [
+        "seasonTag","detailsTag","kingdom","accountAge","power","kills",
+        "vip","castle","passport","commanders","equipment","citySkin",
+        "goldhead","bind","receipts","vipAccess"
+      ];
+
+      const field = accountFields[draft.step - 1];
+      if (field) data[field] = message.content;
 
       await updateDraft(message.author.id, draft.step + 1, data);
       return message.author.send(nextAccountQuestion(draft.step + 1));
     }
 
-    // =================================================
-    // SELLER – RESOURCES FLOW
-    // =================================================
+    /* =================================================
+       SELLER – RESOURCES
+    ================================================= */
     if (draft.role === "seller" && draft.sellType === "resources") {
-      switch (draft.step) {
 
-        case 1: data.food = message.content; break;
-        case 2: data.wood = message.content; break;
-        case 3: data.stone = message.content; break;
-        case 4: data.gold = message.content; break;
-        case 5: data.kingdom = message.content; break;
-        case 6: data.migratable = message.content; break;
+      if (draft.step === 7) {
+        if (!message.attachments.size)
+          return message.author.send("❌ Upload screenshots.");
 
-        case 7:
-          if (!message.attachments.size)
-            return message.author.send("❌ Upload screenshots.");
-          data.screenshots = message.attachments.map(a => a.url);
-          await updateDraft(message.author.id, 8, data);
-          return message.author.send("Price (USD):");
-
-        case 8: {
-          const price = parseInt(message.content);
-          if (isNaN(price) || price <= 0)
-            return message.author.send("❌ Invalid price.");
-          data.price = price;
-          await updateDraft(message.author.id, 9, data);
-          return message.author.send("Choose MM: Arsyu / Brahim / Aries");
-        }
-
-        case 9:
-          return finalizeListing(message, client, draft, data);
+        data.screenshots = message.attachments.map(a => a.url);
+        await updateDraft(message.author.id, 8, data);
+        return message.author.send("💰 Price (USD):");
       }
+
+      if (draft.step === 8) {
+        const price = parseInt(message.content);
+        if (isNaN(price) || price <= 0)
+          return message.author.send("❌ Invalid price.");
+
+        data.price = price;
+        await updateDraft(message.author.id, 9, data);
+        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+      }
+
+      if (draft.step === 9) {
+        return finalizeListing(message, client, draft, data);
+      }
+
+      const resFields = ["food","wood","stone","gold","kingdom","migratable"];
+      const field = resFields[draft.step - 1];
+      if (field) data[field] = message.content;
 
       await updateDraft(message.author.id, draft.step + 1, data);
       return message.author.send(nextResourceQuestion(draft.step + 1));
     }
 
-    // =================================================
-    // SELLER – KINGDOM FLOW
-    // =================================================
+    /* =================================================
+       SELLER – KINGDOM
+    ================================================= */
     if (draft.role === "seller" && draft.sellType === "kingdom") {
-      switch (draft.step) {
 
-        case 1: data.season = message.content; break;
-        case 2: data.kingdom = message.content; break;
-        case 3: data.mainAlliance = message.content; break;
-        case 4: data.farmAlliance = message.content; break;
-        case 5: data.provideAlliance = message.content; break;
-        case 6: data.migration = message.content; break;
-        case 7: data.rebels = message.content; break;
+      if (draft.step === 8) {
+        const price = parseInt(message.content);
+        if (isNaN(price) || price <= 0)
+          return message.author.send("❌ Invalid price.");
 
-        case 8: {
-          const price = parseInt(message.content);
-          if (isNaN(price) || price <= 0)
-            return message.author.send("❌ Invalid price.");
-          data.price = price;
-          await updateDraft(message.author.id, 9, data);
-          return message.author.send("Choose MM: Arsyu / Brahim / Aries");
-        }
-
-        case 9:
-          return finalizeListing(message, client, draft, data);
+        data.price = price;
+        await updateDraft(message.author.id, 9, data);
+        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
       }
+
+      if (draft.step === 9) {
+        return finalizeListing(message, client, draft, data);
+      }
+
+      const kdFields = [
+        "season","kingdom","mainAlliance","farmAlliance",
+        "provideAlliance","migration","rebels"
+      ];
+
+      const field = kdFields[draft.step - 1];
+      if (field) data[field] = message.content;
 
       await updateDraft(message.author.id, draft.step + 1, data);
       return message.author.send(nextKingdomQuestion(draft.step + 1));
     }
 
-    // =================================================
-    // BUYER FLOW (FINAL & FIXED)
-    // =================================================
+    /* =================================================
+       BUYER FLOW (100% FIXED)
+    ================================================= */
     if (draft.role === "buyer" && draft.step === 1) {
-
       const budget = parseInt(message.content);
       if (isNaN(budget) || budget <= 0)
         return message.author.send("❌ Enter a valid numeric budget.");
@@ -157,12 +149,12 @@ module.exports = {
 
       const listings = await Listing.find({
         guildId: draft.guildId,
+        sellType: draft.buyType,
         price: { $lte: budget },
-        status: "available",
-        sellType: draft.buyType
+        status: "available"
       }).limit(5);
 
-      let reply = `💰 **${draft.buyType.toUpperCase()} listings:**\n\n`;
+      let reply = `💰 **${draft.buyType.toUpperCase()} listings for your budget:**\n\n`;
 
       if (!listings.length) {
         reply += "❌ No listings found.\n\n";
@@ -174,21 +166,21 @@ module.exports = {
       }
 
       if (draft.buyType === "resources")
-        reply += `🌾 Browse more: https://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+        reply += `🌾 More resources:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
 
       if (draft.buyType === "kingdom")
-        reply += `🏰 Browse more: https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+        reply += `🏰 More kingdoms:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
 
-      reply += "Click 🛒 **Buy Now** on a listing to start a deal.";
+      reply += "Click 🛒 **Buy Now** on any listing to start a deal.";
 
       return message.author.send(reply);
     }
   }
 };
 
-// =================================================
-// FINALIZE LISTING
-// =================================================
+/* =================================================
+   FINALIZE LISTING
+================================================= */
 async function finalizeListing(message, client, draft, data) {
   const mmName = message.content.trim();
   if (!mmList[mmName])
@@ -245,4 +237,54 @@ async function finalizeListing(message, client, draft, data) {
 
   await deleteDraft(message.author.id);
   return message.author.send("✅ Listing posted successfully!");
+}
+
+/* =================================================
+   QUESTION HELPERS
+================================================= */
+function nextAccountQuestion(step) {
+  const q = {
+    2:"Account Details Tag:",
+    3:"Kingdom:",
+    4:"Account Age:",
+    5:"Power:",
+    6:"Kill Points / Death:",
+    7:"VIP:",
+    8:"Castle Level:",
+    9:"Passport / Alliance Coin:",
+    10:"Legendary Commanders:",
+    11:"Legendary Equipment:",
+    12:"Legendary City Skin:",
+    13:"Goldhead:",
+    14:"Account Bind:",
+    15:"Receipts:",
+    16:"VIP Access:",
+    17:"Price (USD):"
+  };
+  return q[step] || "Next:";
+}
+
+function nextResourceQuestion(step) {
+  const q = {
+    2:"🌲 Wood amount:",
+    3:"🪨 Stone amount:",
+    4:"🥇 Gold amount:",
+    5:"Kingdom:",
+    6:"Migratable? (Yes/No):",
+    7:"Upload screenshots:"
+  };
+  return q[step] || "Next:";
+}
+
+function nextKingdomQuestion(step) {
+  const q = {
+    2:"Kingdom number:",
+    3:"Main alliance:",
+    4:"Farm alliance count:",
+    5:"Alliances provided:",
+    6:"Migration status:",
+    7:"Rebels? (Yes/No):",
+    8:"Price (USD):"
+  };
+  return q[step] || "Next:";
 }
