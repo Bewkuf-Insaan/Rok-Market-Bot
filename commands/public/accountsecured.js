@@ -1,42 +1,48 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Deal = require("../models/Deal");
-const { isMMorSeller } = require("../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("accountsecured")
-    .setDescription("Mark account as secured for a deal")
-    .addStringOption(option =>
+    .setDescription("Mark the account as secured")
+    .addIntegerOption(option =>
       option
-        .setName("dealid")
-        .setDescription("Deal ID")
+        .setName("listingid")
+        .setDescription("Listing ID of the deal")
         .setRequired(true)
     ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const dealId = interaction.options.getString("dealid");
-    const deal = await Deal.findOne({ dealId });
+    const listingId = interaction.options.getInteger("listingid");
+
+    const deal = await Deal.findOne({
+      listingId,
+      guildId: interaction.guild.id
+    });
 
     if (!deal) {
       return interaction.editReply("❌ Deal not found.");
     }
 
-    if (!isMMorSeller(interaction.user.id, deal)) {
+    // MM or Seller only
+    if (
+      interaction.user.id !== deal.mmId &&
+      interaction.user.id !== deal.sellerId
+    ) {
       return interaction.editReply("❌ Only **MM or Seller** can use this command.");
     }
 
-    if (deal.accountSecured) {
-      return interaction.editReply("⚠️ Account is already marked as secured.");
+    if (deal.status !== "account_check") {
+      return interaction.editReply(
+        `⚠️ Invalid deal state. Current status: **${deal.status}**`
+      );
     }
 
-    deal.accountSecured = true;
-    deal.accountSecuredBy = interaction.user.id;
-    deal.accountSecuredAt = new Date();
-
+    deal.status = "secured";
     await deal.save();
 
-    await interaction.editReply("✅ **Account has been marked as secured.**");
+    return interaction.editReply("✅ **Account has been marked as secured.**");
   }
 };
