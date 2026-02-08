@@ -2,6 +2,7 @@ const Listing = require("../models/Listing");
 const { EmbedBuilder } = require("discord.js");
 const getPriceRange = require("../config/priceRanges");
 
+const MM_PERCENT = 0.10; // 10%
 
 // =================================================
 // CREATE LISTING
@@ -9,7 +10,17 @@ const getPriceRange = require("../config/priceRanges");
 
 async function createListing(data) {
   try {
-    return await Listing.create(data);
+    // 🔹 Ensure price is number
+    const price = Number(data.price);
+
+    // 🔹 Calculate MM Fee (10%)
+    const mmFee = Math.round(price * MM_PERCENT * 100) / 100;
+
+    return await Listing.create({
+      ...data,
+      price,
+      mmFee // ✅ store calculated MM fee
+    });
   } catch (error) {
     console.error("Error creating listing:", error);
     throw error;
@@ -72,9 +83,7 @@ async function getListingById(listingId) {
 // =================================================
 
 async function markListingAsSold(client, listing, guildConfig) {
-
   try {
-
     // Fetch original channel + message
     const originalChannel = await client.channels.fetch(listing.channelId);
     const originalMessage = await originalChannel.messages.fetch(listing.messageId);
@@ -115,13 +124,11 @@ async function markListingAsSold(client, listing, guildConfig) {
     await originalMessage.delete().catch(() => {});
 
     return true;
-
   } catch (error) {
     console.error("Error marking listing as sold:", error);
     throw error;
   }
 }
-
 
 module.exports = {
   createListing,
