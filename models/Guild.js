@@ -17,6 +17,7 @@ const guildSchema = new mongoose.Schema({
     default: null
   },
 
+  // 🧑‍💼 ACCOUNT
   priceChannels: {
     type: Object,
     default: {}
@@ -26,11 +27,23 @@ const guildSchema = new mongoose.Schema({
     type: Object,
     default: {}
   },
-  
+
+  // 🌾 RESOURCES
+  resourceSellChannelId: {
+    type: String,
+    default: null
+  },
+
+  // 🏰 KINGDOM
+  kingdomSellChannelId: {
+    type: String,
+    default: null
+  },
+
   logChannelId: {
-  type: String,
-  default: null
-},
+    type: String,
+    default: null
+  },
 
   createdAt: {
     type: Date,
