@@ -17,7 +17,15 @@ const draftSchema = new mongoose.Schema({
     required: true
   },
 
+  // SELLER ONLY
   sellType: {
+    type: String,
+    enum: ["account", "resources", "kingdom"],
+    default: null
+  },
+
+  // BUYER ONLY (🔥 MISSING BEFORE)
+  buyType: {
     type: String,
     enum: ["account", "resources", "kingdom"],
     default: null
