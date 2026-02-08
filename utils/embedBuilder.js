@@ -1,12 +1,14 @@
 const { EmbedBuilder } = require("discord.js");
 
 module.exports = (listingId, data) => {
+  const totalPayable =
+    Math.round((Number(data.price) + Number(data.mmFee)) * 100) / 100;
 
   return new EmbedBuilder()
     .setTitle(`#WTS | Listing #${listingId}`)
     .setColor(0x2ecc71)
     .addFields(
-      { name: "Account Tag Season", value: data.seasonTag || "N/A" },
+      { name: "Account Kingdom Season", value: data.seasonTag || "N/A" },
       { name: "Account Details Tag", value: data.detailsTag || "N/A" },
       { name: "Kingdom", value: data.kingdom || "N/A", inline: true },
       { name: "Account Age", value: data.accountAge || "N/A", inline: true },
@@ -22,9 +24,12 @@ module.exports = (listingId, data) => {
       { name: "Account Bind", value: data.bind || "N/A" },
       { name: "Receipts", value: data.receipts || "N/A" },
       { name: "VIP Access", value: data.vipAccess || "N/A" },
-      { name: "Price", value: `$${data.price}` },
-      { name: "MM Fee", value: `$${data.mmFee}` }
+
+      // 💰 PRICING (CLEAR)
+      { name: "Price", value: `$${data.price}`, inline: true },
+      { name: "MM Fee (10%)", value: `$${data.mmFee}`, inline: true },
+      { name: "Total Payable", value: `$${totalPayable}`, inline: true }
     )
-    .setFooter({ text: "Use /interested LISTING_ID to start deal" })
+    .setFooter({ text: "Click Buy to start deal" })
     .setTimestamp();
 };
