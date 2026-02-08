@@ -83,7 +83,7 @@ module.exports = {
         flags: 64
       });
 
-      await interaction.user.send("Welcome Seller!\n\nPlease enter Kingdom:");
+      await interaction.user.send("**Welcome Seller!**\n\nPlease enter Kingdom Season:");
       return;
     }
 
@@ -253,3 +253,4 @@ module.exports = {
     }
   }
 };
+
