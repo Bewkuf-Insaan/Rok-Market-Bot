@@ -2,7 +2,6 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder,
   ChannelType,
   PermissionsBitField
 } = require("discord.js");
@@ -41,17 +40,10 @@ module.exports = {
         await command.execute(interaction, client);
       } catch (err) {
         console.error(err);
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({
-            content: "❌ Command error.",
-            flags: 64
-          });
-        } else {
-          await interaction.reply({
-            content: "❌ Command error.",
-            flags: 64
-          });
-        }
+        return interaction.reply({
+          content: "❌ Command error.",
+          flags: 64
+        });
       }
       return;
     }
@@ -64,19 +56,17 @@ module.exports = {
     const id = interaction.customId;
 
     /* ==============================
-       BUTTON LOCATION RULES
+       BUTTON LOCATION RULES (FIXED)
     ============================== */
 
-    // DM allowed buttons
     const dmAllowed =
       id.startsWith("sell_") ||
       id.startsWith("buytype_");
 
-    // Server-only buttons
     const serverOnly =
       id === "seller" ||
       id === "buyer" ||
-      id.startsWith("buy_");
+      /^buy_\d+$/.test(id); // 🔥 ONLY numeric buy buttons
 
     if (!interaction.guild && serverOnly && !dmAllowed) {
       return interaction.reply({
@@ -92,27 +82,15 @@ module.exports = {
       await startSellerDraft(interaction.user.id, interaction.guild.id);
 
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("sell_account")
-          .setLabel("🧑‍💼 Account")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("sell_resources")
-          .setLabel("🌾 Resources")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("sell_kingdom")
-          .setLabel("🏰 Kingdom")
-          .setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId("sell_account").setLabel("🧑‍💼 Account").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("sell_resources").setLabel("🌾 Resources").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("sell_kingdom").setLabel("🏰 Kingdom").setStyle(ButtonStyle.Primary)
       );
 
-      await interaction.reply({
-        content: "📩 Check your DMs to continue seller setup.",
-        flags: 64
-      });
+      await interaction.reply({ content: "📩 Check your DMs.", flags: 64 });
 
       await interaction.user.send({
-        content: "**Welcome Seller!**\nWhat do you want to sell?",
+        content: "**What do you want to sell?**",
         components: [row]
       });
       return;
@@ -123,29 +101,21 @@ module.exports = {
     ========================= */
     if (id.startsWith("sell_")) {
       const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft) {
-        return interaction.reply({
-          content: "❌ Seller session expired.",
-          flags: 64
-        });
-      }
+      if (!draft) return interaction.reply({ content: "❌ Session expired.", flags: 64 });
 
       draft.step = 1;
       draft.data = {};
       draft.sellType = id.replace("sell_", "");
       await draft.save();
 
-      const firstQuestion = {
+      const q = {
         account: "Account Season Tag:",
-        resources: "🌾 Enter **Food** amount:",
-        kingdom: "Season (e.g. Season of Conquest):"
+        resources: "🌾 Enter Food amount:",
+        kingdom: "Season:"
       };
 
-      await interaction.user.send(firstQuestion[draft.sellType]);
-      return interaction.reply({
-        content: "✅ Answer the question in DM.",
-        flags: 64
-      });
+      await interaction.user.send(q[draft.sellType]);
+      return interaction.reply({ content: "✅ Answer in DM.", flags: 64 });
     }
 
     /* =========================
@@ -165,24 +135,12 @@ module.exports = {
       );
 
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("buytype_account")
-          .setLabel("🧑‍💼 Account")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("buytype_resources")
-          .setLabel("🌾 Resources")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("buytype_kingdom")
-          .setLabel("🏰 Kingdom")
-          .setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId("buytype_account").setLabel("🧑‍💼 Account").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("buytype_resources").setLabel("🌾 Resources").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("buytype_kingdom").setLabel("🏰 Kingdom").setStyle(ButtonStyle.Primary)
       );
 
-      await interaction.reply({
-        content: "📩 Check your DMs to continue buyer setup.",
-        flags: 64
-      });
+      await interaction.reply({ content: "📩 Check your DMs.", flags: 64 });
 
       await interaction.user.send({
         content: "**What do you want to buy?**",
@@ -195,36 +153,22 @@ module.exports = {
        BUY TYPE (DM)
     ========================= */
     if (id.startsWith("buytype_")) {
-      if (interaction.guild) {
-        return interaction.reply({
-          content: "❌ Use this in DM.",
-          flags: 64
-        });
-      }
-
       const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft || draft.role !== "buyer") {
-        return interaction.reply({
-          content: "❌ Buyer session expired.",
-          flags: 64
-        });
-      }
+      if (!draft || draft.role !== "buyer")
+        return interaction.reply({ content: "❌ Session expired.", flags: 64 });
 
       draft.buyType = id.replace("buytype_", "");
       draft.step = 1;
       await draft.save();
 
-      await interaction.user.send("💰 Enter your budget in USD (numbers only):");
-      return interaction.reply({
-        content: "✅ Answer in DM.",
-        flags: 64
-      });
+      await interaction.user.send("💰 Enter your budget in USD:");
+      return interaction.reply({ content: "✅ Answer in DM.", flags: 64 });
     }
 
     /* ==========================
-       BUY NOW → CREATE TICKET
+       BUY NOW (SERVER ONLY)
     ========================== */
-    if (id.startsWith("buy_")) {
+    if (/^buy_\d+$/.test(id)) {
       await interaction.deferReply({ flags: 64 });
 
       try {
@@ -235,15 +179,12 @@ module.exports = {
         const mmList = require("../config/mmList");
 
         const listing = await Listing.findOne({ listingId });
-        if (!listing || listing.status !== "available") {
+        if (!listing || listing.status !== "available")
           return interaction.editReply("❌ Listing not available.");
-        }
 
         const guildConfig = await Guild.findOne({ guildId: listing.guildId });
         const guild = await client.guilds.fetch(listing.guildId);
         const mm = mmList[listing.mmName];
-
-        if (!mm) return interaction.editReply("❌ MM config error.");
 
         listing.status = "in_deal";
         await listing.save();
@@ -261,10 +202,7 @@ module.exports = {
         });
 
         await ticket.send(
-          `🛡 **Deal Started**\n\n` +
-          `Buyer: <@${interaction.user.id}>\n` +
-          `Seller: <@${listing.sellerId}>\n` +
-          `MM: <@${mm.id}>`
+          `🛡 **Deal Started**\n\nBuyer: <@${interaction.user.id}>\nSeller: <@${listing.sellerId}>\nMM: <@${mm.id}>`
         );
 
         await Deal.create({
@@ -278,9 +216,8 @@ module.exports = {
         });
 
         return interaction.editReply(`✅ Deal ticket created: ${ticket}`);
-
-      } catch (err) {
-        console.error("BUY ERROR:", err);
+      } catch (e) {
+        console.error(e);
         return interaction.editReply("⚠ Failed to start deal.");
       }
     }
