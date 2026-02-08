@@ -116,20 +116,22 @@ async function markListingAsSold(client, listing, guildConfig) {
     let soldChannelId;
 
     // 🧑‍💼 ACCOUNT
-    if (listing.sellType === "account") {
-      const range = getPriceRange(listing.price);
-      soldChannelId = guildConfig.soldChannels?.[range];
-    }
-
     // 🌾 RESOURCES
-    if (listing.sellType === "resources") {
-      soldChannelId = guildConfig.resourceSoldChannelId;
-    }
+if (listing.sellType === "resources") {
+  soldChannelId = guildConfig.resSoldChannelId || guildConfig.resSoldChannel;
+}
 
-    // 🏰 KINGDOM
-    if (listing.sellType === "kingdom") {
-      soldChannelId = guildConfig.kingdomSoldChannelId;
-    }
+// 🏰 KINGDOM
+if (listing.sellType === "kingdom") {
+  soldChannelId = guildConfig.kdSoldChannelId || guildConfig.kdSoldChannel;
+}
+
+// 🧑‍💼 ACCOUNT
+if (listing.sellType === "account") {
+  const range = getPriceRange(listing.price);
+  soldChannelId = guildConfig.soldChannels?.[range];
+}
+
 
     if (!soldChannelId) {
       console.error(
@@ -168,4 +170,5 @@ module.exports = {
   getListingById,
   markListingAsSold
 };
+
 
