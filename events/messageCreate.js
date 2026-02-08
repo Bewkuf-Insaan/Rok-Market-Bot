@@ -130,60 +130,61 @@ module.exports = {
 
     return message.author.send("Choose MM: Arsyu / Brahim / Aries");
 
-  case 19:
-    const mmName = message.content.trim();
+  case 19: {
+  const mmName = message.content.trim();
 
-    if (!mmList[mmName])
-      return message.author.send("Invalid MM name. Type exactly: Arsyu, Brahim or Aries");
+  if (!mmList[mmName])
+    return message.author.send("Invalid MM name. Type exactly: Arsyu, Brahim or Aries");
 
-    data.mm = mmName;
-    data.mmFee = mmList[mmName].fee;
+  data.mm = mmName;
 
-    const listingId = await getNextListingId();
-    const guildConfig = await Guild.findOne({ guildId: draft.guildId });
+  // ✅ MM fee = 10% of price
+  const MM_PERCENT = 0.10;
+  data.mmFee = Math.round(data.price * MM_PERCENT * 100) / 100;
 
-    if (!guildConfig)
-      return message.author.send("Server configuration not found.");
+  const listingId = await getNextListingId();
+  const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-    const range = getPriceRange(data.price);
-    const channelId = guildConfig.priceChannels[range];
+  if (!guildConfig)
+    return message.author.send("Server configuration not found.");
 
-    const channel = await client.channels.fetch(channelId);
+  const range = getPriceRange(data.price);
+  const channelId = guildConfig.priceChannels[range];
+  const channel = await client.channels.fetch(channelId);
 
-    const embed = buildListingEmbed(listingId, data);
+  const embed = buildListingEmbed(listingId, data);
 
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+  const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-const buyButton = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId(`buy_${listingId}`)
-    .setLabel("🛒 Buy Now")
-    .setStyle(ButtonStyle.Success)
-);
+  const buyButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`buy_${listingId}`)
+      .setLabel("🛒 Buy Now")
+      .setStyle(ButtonStyle.Success)
+  );
 
-const sent = await channel.send({
-  embeds: [embed],
-  files: data.screenshots,
-  components: [buyButton]
-});
+  const sent = await channel.send({
+    embeds: [embed],
+    files: data.screenshots,
+    components: [buyButton]
+  });
 
-    await createListing({
-      listingId,
-      guildId: draft.guildId,
-      sellerId: message.author.id,
-      mmName: data.mm,
-      mmFee: data.mmFee,
-      price: data.price,
-      status: "available",
-      data,
-      screenshots: data.screenshots,
-      messageId: sent.id,
-      channelId: channel.id
-    });
+  await createListing({
+    listingId,
+    guildId: draft.guildId,
+    sellerId: message.author.id,
+    mmName: data.mm,
+    price: data.price,
+    mmFee: data.mmFee, // ✅ correct value stored
+    status: "available",
+    data,
+    screenshots: data.screenshots,
+    messageId: sent.id,
+    channelId: channel.id
+  });
 
-    await deleteDraft(message.author.id);
-
-    return message.author.send("✅ Listing posted successfully!");
+  await deleteDraft(message.author.id);
+  return message.author.send("✅ Listing posted successfully!");
 }
 
     }
@@ -261,4 +262,5 @@ if (draft.role === "buyer") {
 
   }
 };
+
 
