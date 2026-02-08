@@ -56,11 +56,36 @@ let listings = await Listing.find({
   status: "available",
   $expr: {
     $and: [
-      { $gte: [{ $toInt: "$price" }, minPrice] },
-      { $lte: [{ $toInt: "$price" }, maxPrice] }
+      {
+        $gte: [
+          {
+            $convert: {
+              input: "$price",
+              to: "int",
+              onError: 0,
+              onNull: 0
+            }
+          },
+          minPrice
+        ]
+      },
+      {
+        $lte: [
+          {
+            $convert: {
+              input: "$price",
+              to: "int",
+              onError: 999999999,
+              onNull: 999999999
+            }
+          },
+          maxPrice
+        ]
+      }
     ]
   }
 }).limit(10);
+
 
 // sort closest to buyer budget
 listings.sort(
@@ -336,4 +361,5 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
