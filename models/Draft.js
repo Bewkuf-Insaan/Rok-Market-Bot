@@ -17,6 +17,12 @@ const draftSchema = new mongoose.Schema({
     required: true
   },
 
+  sellType: {
+    type: String,
+    enum: ["account", "resources", "kingdom"],
+    default: null
+  },
+
   step: {
     type: Number,
     required: true
