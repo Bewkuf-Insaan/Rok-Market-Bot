@@ -81,7 +81,14 @@ module.exports = {
 
       reply += "Click 🛒 **Buy Now** to start a deal.";
       return message.author.send(reply);
+      console.log("BUYER DRAFT:", {
+  step: draft.step,
+  buyType: draft.buyType,
+  budget: message.content
+});
+
     }
   }
 };
+
 
