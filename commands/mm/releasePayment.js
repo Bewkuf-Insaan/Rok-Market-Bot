@@ -73,13 +73,30 @@ module.exports = {
     // =========================
     // REMOVE BUTTONS FROM ORIGINAL LISTING
     // =========================
-    try {
-      const channel = await client.channels.fetch(listing.channelId);
-      const message = await channel.messages.fetch(listing.messageId);
-      await message.edit({ components: [] });
-    } catch (err) {
-      console.warn("Listing message already removed or inaccessible.");
-    }
+   try {
+  const channel = await client.channels.fetch(listing.channelId);
+  const message = await channel.messages.fetch(listing.messageId);
+
+  const embed = message.embeds[0];
+  if (embed) {
+    const soldEmbed = {
+      ...embed.data,
+      color: 0x2ECC71,
+      fields: [
+        ...embed.fields.filter(f => f.name !== "Status"),
+        { name: "Status", value: "✅ Sold", inline: true }
+      ]
+    };
+
+    await message.edit({
+      embeds: [soldEmbed],
+      components: []
+    });
+  }
+} catch (err) {
+  console.warn("Listing message already removed or inaccessible.");
+}
+
 
     // =========================
     // MOVE TO SOLD CHANNEL
@@ -166,3 +183,4 @@ module.exports = {
     }, 3000);
   }
 };
+
