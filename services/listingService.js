@@ -7,19 +7,15 @@ const MM_PERCENT = 0.10; // 10%
 // =================================================
 // CREATE LISTING
 // =================================================
-
 async function createListing(data) {
   try {
-    // 🔹 Ensure price is number
     const price = Number(data.price);
-
-    // 🔹 Calculate MM Fee (10%)
     const mmFee = Math.round(price * MM_PERCENT * 100) / 100;
 
     return await Listing.create({
       ...data,
       price,
-      mmFee // ✅ store calculated MM fee
+      mmFee
     });
   } catch (error) {
     console.error("Error creating listing:", error);
@@ -27,11 +23,9 @@ async function createListing(data) {
   }
 }
 
-
 // =================================================
 // UPDATE LISTING STATUS
 // =================================================
-
 async function updateListingStatus(listingId, status) {
   try {
     return await Listing.findOneAndUpdate(
@@ -45,11 +39,9 @@ async function updateListingStatus(listingId, status) {
   }
 }
 
-
 // =================================================
 // GET AVAILABLE LISTINGS BY BUDGET
 // =================================================
-
 async function getAvailableListingsByBudget(guildId, budget) {
   try {
     return await Listing.find({
@@ -63,11 +55,9 @@ async function getAvailableListingsByBudget(guildId, budget) {
   }
 }
 
-
 // =================================================
 // GET LISTING BY ID
 // =================================================
-
 async function getListingById(listingId) {
   try {
     return await Listing.findOne({ listingId });
@@ -77,14 +67,12 @@ async function getListingById(listingId) {
   }
 }
 
-
 // =================================================
-// MARK LISTING AS SOLD
+// MARK LISTING AS SOLD (AUTO ROUTING)
 // =================================================
-
 async function markListingAsSold(client, listing, guildConfig) {
   try {
-    // Fetch original channel + message
+    // Fetch original listing message
     const originalChannel = await client.channels.fetch(listing.channelId);
     const originalMessage = await originalChannel.messages.fetch(listing.messageId);
 
@@ -93,37 +81,83 @@ async function markListingAsSold(client, listing, guildConfig) {
       return;
     }
 
-    // Clone old embed safely
-    const oldEmbed = originalMessage.embeds[0];
-    const newEmbed = EmbedBuilder.from(oldEmbed)
-      .setColor(0xe74c3c)
-      .spliceFields(
-        oldEmbed.fields.findIndex(f => f.name === "Status"),
-        1,
-        { name: "Status", value: "🔴 SOLD", inline: false }
-      );
+    // =============================
+    // CLONE / BUILD SOLD EMBED
+    // =============================
+    let soldEmbed;
 
-    // Determine correct sold channel
-    const rangeKey = getPriceRange(listing.price);
-    const soldChannelId = guildConfig.soldChannels[rangeKey];
+    if (originalMessage.embeds.length) {
+      const oldEmbed = originalMessage.embeds[0];
+      soldEmbed = EmbedBuilder.from(oldEmbed)
+        .setColor(0xe74c3c)
+        .setFooter({ text: "SOLD" });
+
+      const statusIndex = oldEmbed.fields?.findIndex(f => f.name === "Status");
+      if (statusIndex !== -1) {
+        soldEmbed.spliceFields(statusIndex, 1, {
+          name: "Status",
+          value: "🔴 SOLD",
+          inline: false
+        });
+      }
+    } else {
+      soldEmbed = new EmbedBuilder()
+        .setTitle(`Listing #${listing.listingId}`)
+        .setColor(0xe74c3c)
+        .setDescription("🔴 SOLD");
+    }
+
+    // =============================
+    // DETERMINE SOLD CHANNEL
+    // =============================
+    let soldChannelId = null;
+
+    // 🧑‍💼 ACCOUNT
+    if (listing.data?.seasonTag && listing.price) {
+      const rangeKey = getPriceRange(listing.price);
+      soldChannelId = guildConfig.soldChannels?.[rangeKey];
+    }
+
+    // 🌾 RESOURCES
+    else if (
+      listing.data?.food &&
+      listing.data?.wood &&
+      listing.data?.stone &&
+      listing.data?.gold
+    ) {
+      soldChannelId = guildConfig.resourceSoldChannelId;
+    }
+
+    // 🏰 KINGDOM
+    else if (
+      listing.data?.season &&
+      listing.data?.mainAlliance
+    ) {
+      soldChannelId = guildConfig.kingdomSoldChannelId;
+    }
 
     if (!soldChannelId) {
-      console.log("Sold channel not configured.");
+      console.error("❌ SOLD channel not found for listing", listing.listingId);
       return;
     }
 
     const soldChannel = await client.channels.fetch(soldChannelId);
 
-    // Send new message in sold channel
+    // =============================
+    // SEND TO SOLD CHANNEL
+    // =============================
     await soldChannel.send({
-      embeds: [newEmbed],
+      embeds: [soldEmbed],
       files: listing.screenshots || []
     });
 
-    // Delete original listing message
+    // =============================
+    // DELETE ORIGINAL LISTING
+    // =============================
     await originalMessage.delete().catch(() => {});
 
     return true;
+
   } catch (error) {
     console.error("Error marking listing as sold:", error);
     throw error;
