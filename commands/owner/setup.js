@@ -153,3 +153,4 @@ module.exports = {
     await interaction.reply("✅ Setup completed successfully.");
   }
 };
+
