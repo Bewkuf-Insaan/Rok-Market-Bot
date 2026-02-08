@@ -117,28 +117,47 @@ async function markListingAsSold(client, listing, guildConfig) {
 
     // 🧑‍💼 ACCOUNT
     // 🌾 RESOURCES
-if (listing.sellType === "resources") {
-  soldChannelId = guildConfig.resSoldChannelId || guildConfig.resSoldChannel;
+// =============================
+// DETERMINE SOLD CHANNEL (SAFE)
+// =============================
+let soldChannelId = null;
+
+// Prefer explicit sellType
+const sellType = listing.sellType || listing.type || null;
+
+// 🧑‍💼 ACCOUNT
+if (sellType === "account") {
+  const range = getPriceRange(listing.price);
+  soldChannelId = guildConfig.soldChannels?.[range] || null;
+}
+
+// 🌾 RESOURCES
+else if (sellType === "resources") {
+  soldChannelId = guildConfig.resourceSoldChannelId || null;
 }
 
 // 🏰 KINGDOM
-if (listing.sellType === "kingdom") {
-  soldChannelId = guildConfig.kdSoldChannelId || guildConfig.kdSoldChannel;
+else if (sellType === "kingdom") {
+  soldChannelId = guildConfig.kingdomSoldChannelId || null;
 }
 
-// 🧑‍💼 ACCOUNT
-if (listing.sellType === "account") {
-  const range = getPriceRange(listing.price);
-  soldChannelId = guildConfig.soldChannels?.[range];
+// 🛑 FALLBACK (channel-based safety net)
+if (!soldChannelId) {
+  if (listing.channelId === guildConfig.resourceSellChannelId) {
+    soldChannelId = guildConfig.resourceSoldChannelId;
+  } else if (listing.channelId === guildConfig.kingdomSellChannelId) {
+    soldChannelId = guildConfig.kingdomSoldChannelId;
+  }
 }
 
+if (!soldChannelId) {
+  console.error(
+    `❌ Sold channel unresolved for listing #${listing.listingId}`,
+    { sellType, channelId: listing.channelId }
+  );
+  return false;
+}
 
-    if (!soldChannelId) {
-      console.error(
-        `❌ Sold channel not configured for ${listing.sellType} listing #${listing.listingId}`
-      );
-      return;
-    }
 
     const soldChannel = await client.channels.fetch(soldChannelId);
 
@@ -170,5 +189,6 @@ module.exports = {
   getListingById,
   markListingAsSold
 };
+
 
 
