@@ -180,13 +180,9 @@ if (!draft) {
   await draft.save();
 
   await interaction.user.send(
-    `💰 Enter your budget in USD (numbers only):`
-  );
-
-  return interaction.reply({
-    content: "✅ Check DM.",
-    flags: 64
-  });
+  `✅ You chose **${draft.buyType.toUpperCase()}**.\n\n` +
+  "💰 Enter your budget in USD (numbers only):"
+);
 }
 
 
@@ -248,5 +244,6 @@ if (!draft) {
     }
   }
 };
+
 
 
