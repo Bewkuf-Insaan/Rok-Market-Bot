@@ -1,46 +1,48 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Deal = require("../models/Deal");
-const { isMMorSeller } = require("../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("loginsecured")
-    .setDescription("Mark login as secured for a deal")
-    .addStringOption(option =>
+    .setDescription("Confirm login security for the deal")
+    .addIntegerOption(option =>
       option
-        .setName("dealid")
-        .setDescription("Deal ID")
+        .setName("listingid")
+        .setDescription("Listing ID of the deal")
         .setRequired(true)
     ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const dealId = interaction.options.getString("dealid");
-    const deal = await Deal.findOne({ dealId });
+    const listingId = interaction.options.getInteger("listingid");
+
+    const deal = await Deal.findOne({
+      listingId,
+      guildId: interaction.guild.id
+    });
 
     if (!deal) {
       return interaction.editReply("❌ Deal not found.");
     }
 
-    if (!isMMorSeller(interaction.user.id, deal)) {
+    // MM or Seller only
+    if (
+      interaction.user.id !== deal.mmId &&
+      interaction.user.id !== deal.sellerId
+    ) {
       return interaction.editReply("❌ Only **MM or Seller** can use this command.");
     }
 
-    if (!deal.accountSecured) {
-      return interaction.editReply("⚠️ Account must be secured before securing login.");
+    if (deal.status !== "secured") {
+      return interaction.editReply(
+        `⚠️ Login can only be secured after account is secured.\nCurrent status: **${deal.status}**`
+      );
     }
 
-    if (deal.loginSecured) {
-      return interaction.editReply("⚠️ Login is already marked as secured.");
-    }
-
-    deal.loginSecured = true;
-    deal.loginSecuredBy = interaction.user.id;
-    deal.loginSecuredAt = new Date();
-
+    deal.status = "login_confirmed";
     await deal.save();
 
-    await interaction.editReply("✅ **Login has been marked as secured.**");
+    return interaction.editReply("✅ **Login has been successfully secured.**");
   }
 };
