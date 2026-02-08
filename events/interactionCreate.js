@@ -65,10 +65,11 @@ module.exports = {
     // ==============================
     if (!interaction.isButton()) return;
 
-    // 🚨 Allow sell buttons in DM, block others
-    const isSellTypeButton = interaction.customId.startsWith("sell_");
+    // ✅ Allow seller + buyer type buttons in DM
+    const isSellerType = interaction.customId.startsWith("sell_");
+    const isBuyerType = interaction.customId.startsWith("buytype_");
 
-    if (!interaction.guild && !isSellTypeButton) {
+    if (!interaction.guild && !isSellerType && !isBuyerType) {
       return interaction.reply({
         content: "Please use this button inside the server.",
         flags: 64
@@ -147,7 +148,7 @@ module.exports = {
       }
 
       return interaction.reply({
-        content: "Answer The Above Question Please ",
+        content: "✅ Selection saved. Continue in DMs.",
         flags: 64
       });
     }
@@ -163,19 +164,65 @@ module.exports = {
           userId: interaction.user.id,
           guildId: interaction.guild.id,
           role: "buyer",
-          step: 1,
+          step: 0,
           data: {}
         },
         { upsert: true }
       );
 
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("buytype_account")
+          .setLabel("🧑‍💼 Account")
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("buytype_resources")
+          .setLabel("🌾 Resources")
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("buytype_kingdom")
+          .setLabel("🏰 Kingdom")
+          .setStyle(ButtonStyle.Primary)
+      );
+
       await interaction.reply({
-        content: "📩 Check your DMs to continue buyer process.",
+        content: "📩 Check your DMs to continue buyer setup.",
         flags: 64
       });
 
-      await interaction.user.send("Enter your budget in USD (numbers only):");
+      await interaction.user.send({
+        content: "**Welcome Buyer!**\n\nWhat do you want to buy?",
+        components: [row]
+      });
+
       return;
+    }
+
+    // =========================
+    // BUY TYPE SELECTION (DM)
+    // =========================
+    if (interaction.customId.startsWith("buytype_")) {
+
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft) {
+        return interaction.reply({
+          content: "❌ Buyer session expired. Click Buyer again.",
+          flags: 64
+        });
+      }
+
+      draft.buyType = interaction.customId.replace("buytype_", "");
+      draft.step = 1;
+      await draft.save();
+
+      await interaction.reply({
+        content: "✅ Selection saved. Continue in DMs.",
+        flags: 64
+      });
+
+      return interaction.user.send("Enter your budget in USD (numbers only):");
     }
 
     // ==========================
@@ -299,4 +346,3 @@ module.exports = {
     }
   }
 };
-
