@@ -1,4 +1,4 @@
-const { 
+const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -25,7 +25,6 @@ module.exports = {
       if (!command) return;
 
       try {
-
         if (interaction.guild) {
           if (
             interaction.commandName !== "addsub" &&
@@ -58,6 +57,7 @@ module.exports = {
           });
         }
       }
+      return;
     }
 
     // ==============================
@@ -65,15 +65,18 @@ module.exports = {
     // ==============================
     if (!interaction.isButton()) return;
 
-    if (!interaction.guild) {
+    // 🚨 Allow sell buttons in DM, block others
+    const isSellTypeButton = interaction.customId.startsWith("sell_");
+
+    if (!interaction.guild && !isSellTypeButton) {
       return interaction.reply({
-        content: "Please use buttons inside the server.",
+        content: "Please use this button inside the server.",
         flags: 64
       });
     }
 
     // =========================
-    // SELLER BUTTON
+    // SELLER BUTTON (SERVER)
     // =========================
     if (interaction.customId === "seller") {
 
@@ -110,7 +113,7 @@ module.exports = {
     }
 
     // =========================
-    // SELL TYPE SELECTION
+    // SELL TYPE SELECTION (DM)
     // =========================
     if (interaction.customId.startsWith("sell_")) {
 
@@ -150,7 +153,7 @@ module.exports = {
     }
 
     // =========================
-    // BUYER BUTTON
+    // BUYER BUTTON (SERVER)
     // =========================
     if (interaction.customId === "buyer") {
 
@@ -176,14 +179,13 @@ module.exports = {
     }
 
     // ==========================
-    // BUY LISTING BUTTON
+    // BUY LISTING BUTTON (SERVER)
     // ==========================
     if (interaction.customId.startsWith("buy_")) {
 
       await interaction.deferReply({ flags: 64 });
 
       try {
-
         const listingId = parseInt(interaction.customId.split("_")[1]);
 
         const Listing = require("../models/Listing");
@@ -192,7 +194,6 @@ module.exports = {
         const mmList = require("../config/mmList");
 
         const listing = await Listing.findOne({ listingId });
-
         if (!listing || listing.status !== "available") {
           return interaction.editReply({
             content: "❌ This listing is no longer available."
@@ -209,11 +210,9 @@ module.exports = {
           });
         }
 
-        // Lock listing
         listing.status = "in_deal";
         await listing.save();
 
-        // Create ticket channel
         const ticket = await guildObj.channels.create({
           name: `deal-${listingId}`,
           type: ChannelType.GuildText,
@@ -225,24 +224,15 @@ module.exports = {
             },
             {
               id: listing.sellerId,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages
-              ]
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
             },
             {
               id: interaction.user.id,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages
-              ]
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
             },
             {
               id: mmData.id,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages
-              ]
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
             }
           ]
         });
@@ -269,14 +259,14 @@ module.exports = {
             new EmbedBuilder()
               .setTitle("📋 Deal Checklist")
               .setColor(0x2ecc71)
-              .setDescription(`
-⬜ Payment Received  
+              .setDescription(
+`⬜ Payment Received  
 ⬜ Account Verified  
 ⬜ Account Secured  
 ⬜ Buyer Login Confirmed  
 ⬜ 24h Hold Started  
-⬜ Payment Released  
-`)
+⬜ Payment Released`
+              )
           ]
         });
 
