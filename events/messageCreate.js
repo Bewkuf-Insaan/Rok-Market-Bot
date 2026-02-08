@@ -49,23 +49,39 @@ module.exports = {
 
       let reply = `💰 **${draft.buyType.toUpperCase()} listings:**\n\n`;
 
-      if (!listings.length) {
-        reply += "❌ No listings found.\n\n";
-      } else {
-        for (const l of listings) {
-          reply += `🔹 **#${l.listingId}** — $${l.price}\n` +
-            `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
-        }
-      }
+     if (!listings.length) {
+  reply += `❌ No listings found under $${budget}.\n\n`;
 
-      if (draft.buyType === "resources")
-        reply += `🌾 Browse more:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+  // 🔥 ACCOUNT → price range channel
+  if (draft.buyType === "account") {
+    const range = getPriceRange(budget);
+    const channelId = guildConfig.priceChannels?.[range];
 
-      if (draft.buyType === "kingdom")
-        reply += `🏰 Browse more:\nhttps://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+    if (channelId) {
+      reply +=
+        `🔎 You can check accounts in the **$${range}** range here:\n` +
+        `https://discord.com/channels/${draft.guildId}/${channelId}\n\n`;
+    }
+  }
+
+  // 🌾 RESOURCES
+  if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
+    reply +=
+      `🌾 Browse all resource listings here:\n` +
+      `https://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+  }
+
+  // 🏰 KINGDOM
+  if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
+    reply +=
+      `🏰 Browse all kingdom listings here:\n` +
+      `https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+  }
+}
 
       reply += "Click 🛒 **Buy Now** to start a deal.";
       return message.author.send(reply);
     }
   }
 };
+
