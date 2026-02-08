@@ -3,6 +3,7 @@ const Deal = require("../../models/Deal");
 const Listing = require("../../models/Listing");
 const Guild = require("../../models/Guild");
 const MMProfile = require("../../models/MMProfile");
+
 const { isMM } = require("../../utils/permissions");
 const { markListingAsSold } = require("../../services/listingService");
 const { updateChecklist } = require("../../services/checklistService");
@@ -14,62 +15,92 @@ module.exports = {
     .setDescription("Release payment and complete deal"),
 
   async execute(interaction, client) {
-    // MM only
+
+    // =========================
+    // MM ONLY
+    // =========================
     if (!isMM(interaction.user.id)) {
       return interaction.reply({
-        content: "Only MM can use this command.",
+        content: "❌ Only MM can use this command.",
         ephemeral: true
       });
     }
 
+    // =========================
+    // FIND DEAL
+    // =========================
     const deal = await Deal.findOne({ channelId: interaction.channel.id });
 
     if (!deal) {
       return interaction.reply({
-        content: "No active deal found in this channel.",
+        content: "❌ No active deal found in this channel.",
         ephemeral: true
       });
     }
 
+    // =========================
+    // PREVENT DOUBLE RELEASE
+    // =========================
+    if (deal.status === "completed") {
+      return interaction.reply({
+        content: "⚠ This deal is already completed.",
+        ephemeral: true
+      });
+    }
+
+    // =========================
+    // FETCH LISTING & CONFIG
+    // =========================
     const listing = await Listing.findOne({ listingId: deal.listingId });
     const guildConfig = await Guild.findOne({ guildId: interaction.guild.id });
 
     if (!listing || !guildConfig) {
       return interaction.reply({
-        content: "Configuration error. Listing or guild config missing.",
+        content: "❌ Configuration error. Listing or guild config missing.",
         ephemeral: true
       });
     }
 
-    // ✅ COMPLETE DEAL (NO HOLD CHECK)
+    // =========================
+    // COMPLETE DEAL
+    // =========================
     deal.status = "completed";
     await deal.save();
 
     listing.status = "sold";
     await listing.save();
 
-    // Remove buttons from listing message
+    // =========================
+    // REMOVE BUTTONS FROM ORIGINAL LISTING
+    // =========================
     try {
-      const channel = await interaction.client.channels.fetch(listing.channelId);
+      const channel = await client.channels.fetch(listing.channelId);
       const message = await channel.messages.fetch(listing.messageId);
       await message.edit({ components: [] });
     } catch (err) {
-      console.error("Failed to update listing message:", err);
+      console.warn("Listing message already removed or inaccessible.");
     }
 
-    // Move listing / mark sold
+    // =========================
+    // MOVE TO SOLD CHANNEL
+    // =========================
     await markListingAsSold(client, listing, guildConfig);
 
-    // Update checklist
+    // =========================
+    // UPDATE CHECKLIST
+    // =========================
     await updateChecklist(client, deal);
 
     await interaction.reply(
-      "✅ Deal completed. Payment released and listing marked **SOLD**."
+      "✅ **Deal completed successfully.**\nPayment released and listing moved to **SOLD**."
     );
 
-    // Generate transcript
+    // =========================
+    // TRANSCRIPT
+    // =========================
     const transcript = await generateTranscript(interaction.channel);
 
+    // DM owner transcript
     if (transcript) {
       try {
         const owner = await interaction.guild.fetchOwner();
@@ -78,11 +109,13 @@ module.exports = {
           files: [transcript]
         });
       } catch (err) {
-        console.error("Failed to DM owner transcript:", err);
+        console.warn("Could not DM owner transcript.");
       }
     }
 
-    // Log channel
+    // =========================
+    // LOG CHANNEL
+    // =========================
     if (guildConfig.logChannelId) {
       try {
         const logChannel = await interaction.guild.channels.fetch(
@@ -101,29 +134,34 @@ module.exports = {
           });
         }
       } catch (err) {
-        console.error("Failed to log deal:", err);
+        console.warn("Failed to log deal.");
       }
     }
 
-    // Increase MM completed deals
+    // =========================
+    // MM STATS
+    // =========================
     await MMProfile.findOneAndUpdate(
       { userId: deal.mmId },
       { $inc: { completedDeals: 1 } },
       { upsert: true }
     );
 
-    // Lock ticket
-    await interaction.channel.permissionOverwrites.edit(
-      interaction.guild.id,
-      { ViewChannel: false }
-    );
+    // =========================
+    // LOCK & DELETE TICKET
+    // =========================
+    try {
+      await interaction.channel.permissionOverwrites.edit(
+        interaction.guild.id,
+        { ViewChannel: false }
+      );
+    } catch {}
 
-    // Delete channel after 3 seconds
     setTimeout(async () => {
       try {
         await interaction.channel.delete();
       } catch (err) {
-        console.error("Ticket delete error:", err);
+        console.warn("Ticket already deleted.");
       }
     }, 3000);
   }
