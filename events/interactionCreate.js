@@ -65,11 +65,17 @@ module.exports = {
     // ==============================
     if (!interaction.isButton()) return;
 
-    // ✅ Allow seller + buyer type buttons in DM
-    const isSellerType = interaction.customId.startsWith("sell_");
-    const isBuyerType = interaction.customId.startsWith("buytype_");
+    // ==============================
+    // DM / SERVER PERMISSION LOGIC
+    // ==============================
+    const dmAllowed =
+      interaction.customId.startsWith("sell_") ||
+      interaction.customId.startsWith("buytype_");
 
-    if (!interaction.guild && !isSellerType && !isBuyerType) {
+    const serverOnly =
+      interaction.customId.startsWith("buy_"); // listing buy buttons
+
+    if (!interaction.guild && serverOnly && !dmAllowed) {
       return interaction.reply({
         content: "Please use this button inside the server.",
         flags: 64
@@ -88,12 +94,10 @@ module.exports = {
           .setCustomId("sell_account")
           .setLabel("🧑‍💼 Account")
           .setStyle(ButtonStyle.Primary),
-
         new ButtonBuilder()
           .setCustomId("sell_resources")
           .setLabel("🌾 Resources")
           .setStyle(ButtonStyle.Primary),
-
         new ButtonBuilder()
           .setCustomId("sell_kingdom")
           .setLabel("🏰 Kingdom")
@@ -148,7 +152,7 @@ module.exports = {
       }
 
       return interaction.reply({
-        content: "✅ Answer the Above Question.....",
+        content: "✅ Answer the above question.",
         flags: 64
       });
     }
@@ -156,80 +160,72 @@ module.exports = {
     // =========================
     // BUYER BUTTON (SERVER)
     // =========================
-    // =========================
-// BUYER BUTTON (SERVER)
-// =========================
-if (interaction.customId === "buyer") {
+    if (interaction.customId === "buyer") {
 
-  await Draft.findOneAndUpdate(
-    { userId: interaction.user.id },
-    {
-      userId: interaction.user.id,
-      guildId: interaction.guild.id,
-      role: "buyer",
-      step: 0,
-      data: {}
-    },
-    { upsert: true }
-  );
+      await Draft.findOneAndUpdate(
+        { userId: interaction.user.id },
+        {
+          userId: interaction.user.id,
+          guildId: interaction.guild.id,
+          role: "buyer",
+          step: 0,
+          data: {}
+        },
+        { upsert: true }
+      );
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("buy_account")
-      .setLabel("🧑‍💼 Account")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("buy_resources")
-      .setLabel("🌾 Resources")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("buy_kingdom")
-      .setLabel("🏰 Kingdom")
-      .setStyle(ButtonStyle.Primary)
-  );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("buytype_account")
+          .setLabel("🧑‍💼 Account")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("buytype_resources")
+          .setLabel("🌾 Resources")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("buytype_kingdom")
+          .setLabel("🏰 Kingdom")
+          .setStyle(ButtonStyle.Primary)
+      );
 
-  await interaction.reply({
-    content: "📩 Check your DMs to continue buyer setup.",
-    flags: 64
-  });
+      await interaction.reply({
+        content: "📩 Check your DMs to continue buyer setup.",
+        flags: 64
+      });
 
-  await interaction.user.send({
-    content: "**What do you want to buy?**",
-    components: [row]
-  });
+      await interaction.user.send({
+        content: "**What do you want to buy?**",
+        components: [row]
+      });
 
-  return;
-}
-
+      return;
+    }
 
     // =========================
     // BUY TYPE SELECTION (DM)
     // =========================
-    // =========================
-// BUY TYPE SELECTION (DM)
-// =========================
-if (interaction.customId.startsWith("buy_")) {
+    if (interaction.customId.startsWith("buytype_")) {
 
-  const draft = await Draft.findOne({ userId: interaction.user.id });
-  if (!draft) {
-    return interaction.reply({
-      content: "❌ Buyer session expired. Click Buyer again.",
-      flags: 64
-    });
-  }
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft || draft.role !== "buyer") {
+        return interaction.reply({
+          content: "❌ Buyer session expired. Click Buyer again.",
+          flags: 64
+        });
+      }
 
-  draft.buyType = interaction.customId.replace("buy_", "");
-  draft.step = 1;
-  await draft.save();
+      draft.buyType = interaction.customId.replace("buytype_", "");
+      draft.step = 1;
+      await draft.save();
 
-  await interaction.user.send("💰 Enter your budget in USD (numbers only):");
+      await interaction.user.send("💰 Enter your budget in USD (numbers only):");
 
-  return interaction.reply({
-    content: "Answer the above question..",
-    flags: 64
-  });
-}
-
+      return interaction.reply({
+        content: "✅ Answer the above question.",
+        flags: 64
+      });
+    }
 
     // ==========================
     // BUY LISTING BUTTON (SERVER)
@@ -271,22 +267,10 @@ if (interaction.customId.startsWith("buy_")) {
           type: ChannelType.GuildText,
           parent: guildConfig.ticketCategoryId,
           permissionOverwrites: [
-            {
-              id: guildObj.roles.everyone.id,
-              deny: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-              id: listing.sellerId,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            },
-            {
-              id: interaction.user.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            },
-            {
-              id: mmData.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            }
+            { id: guildObj.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: listing.sellerId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: mmData.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
           ]
         });
 
@@ -296,48 +280,6 @@ if (interaction.customId.startsWith("buy_")) {
           `Seller: <@${listing.sellerId}>\n` +
           `MM: <@${mmData.id}>`
         );
-
-        const deal = await Deal.create({
-          listingId,
-          guildId: listing.guildId,
-          channelId: ticket.id,
-          buyerId: interaction.user.id,
-          sellerId: listing.sellerId,
-          mmId: mmData.id,
-          status: "waiting_payment"
-        });
-
-        const checklistMessage = await ticket.send({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("📋 Deal Checklist")
-              .setColor(0x2ecc71)
-              .setDescription(
-`⬜ Payment Received  
-⬜ Account Verified  
-⬜ Account Secured  
-⬜ Buyer Login Confirmed  
-⬜ 24h Hold Started  
-⬜ Payment Released`
-              )
-          ]
-        });
-
-        deal.checklistMessageId = checklistMessage.id;
-        await deal.save();
-
-        const channel = await client.channels.fetch(listing.channelId);
-        const msg = await channel.messages.fetch(listing.messageId);
-
-        const disabledRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`buy_${listingId}`)
-            .setLabel("🔒 In Deal")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true)
-        );
-
-        await msg.edit({ components: [disabledRow] });
 
         await interaction.editReply({
           content: `✅ Deal ticket created: ${ticket}`
@@ -352,5 +294,3 @@ if (interaction.customId.startsWith("buy_")) {
     }
   }
 };
-
-
