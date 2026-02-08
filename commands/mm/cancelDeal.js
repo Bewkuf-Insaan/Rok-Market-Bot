@@ -42,6 +42,49 @@ module.exports = {
     // Update deal
     deal.status = "cancelled";
     await deal.save();
+// =========================
+// REVERT LISTING TO AVAILABLE
+// =========================
+const listing = await Listing.findOne({ listingId: deal.listingId });
+
+if (listing) {
+  listing.status = "available";
+  listing.buyerId = null;
+  listing.dealId = null;
+  await listing.save();
+
+  // Restore Buy button + status
+  try {
+    const channel = await client.channels.fetch(listing.channelId);
+    const message = await channel.messages.fetch(listing.messageId);
+
+    const embed = message.embeds[0];
+    if (embed) {
+      const revertedEmbed = {
+        ...embed.data,
+        color: 0x2ECC71,
+        fields: [
+          ...embed.fields.filter(f => f.name !== "Status"),
+          { name: "Status", value: "🟢 Available", inline: true }
+        ]
+      };
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`buy_${listing.listingId}`)
+          .setLabel("🛒 Buy Now")
+          .setStyle(ButtonStyle.Success)
+      );
+
+      await message.edit({
+        embeds: [revertedEmbed],
+        components: [row]
+      });
+    }
+  } catch (err) {
+    console.warn("Failed to restore listing after cancel.");
+  }
+}
 
     // Reopen listing
     const listing = await Listing.findOneAndUpdate(
@@ -119,4 +162,5 @@ module.exports = {
 
   }
 };
+
 
