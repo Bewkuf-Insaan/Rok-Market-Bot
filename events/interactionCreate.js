@@ -10,6 +10,32 @@ const Draft = require("../models/Draft");
 const { startSellerDraft } = require("../services/sellerFlow");
 const { checkSubscription } = require("../services/subscriptionService");
 
+async function markListingInDeal(client, listing) {
+  try {
+    const channel = await client.channels.fetch(listing.channelId);
+    const message = await channel.messages.fetch(listing.messageId);
+
+    const embed = message.embeds[0];
+    if (!embed) return;
+
+    const updatedEmbed = {
+      ...embed.data,
+      color: 0xF1C40F,
+      fields: [
+        ...embed.fields.filter(f => f.name !== "Status"),
+        { name: "Status", value: "🟡 In Deal", inline: true }
+      ]
+    };
+
+    await message.edit({
+      embeds: [updatedEmbed],
+      components: [] // 🔒 disables Buy button
+    });
+  } catch (err) {
+    console.warn("Failed to mark listing as in-deal");
+  }
+}
+
 module.exports = {
   name: "interactionCreate",
 
@@ -205,7 +231,12 @@ module.exports = {
         if (!mm) return interaction.editReply("❌ MM config error.");
 
         listing.status = "in_deal";
-        await listing.save();
+listing.buyerId = interaction.user.id;
+await listing.save();
+
+// 🔒 Lock listing visually
+await markListingInDeal(client, listing);
+;
 
         const ticket = await guild.channels.create({
           name: `deal-${listingId}`,
@@ -244,3 +275,4 @@ module.exports = {
     }
   }
 };
+
