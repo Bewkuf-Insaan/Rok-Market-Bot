@@ -1,11 +1,24 @@
 const Listing = require("../models/Listing");
 
 async function getListingsForBudget(guildId, budget) {
-  return await Listing.find({
+  const minPrice = Math.max(0, budget - 100);
+  const maxPrice = budget + 100;
+
+  const listings = await Listing.find({
     guildId,
-    price: { $lte: budget },
-    status: "available"
-  }).limit(5);
+    sellType: "account",          // ✅ only accounts
+    status: "available",
+    price: { $gte: minPrice, $lte: maxPrice }
+  })
+    .limit(10); // fetch more, we'll sort then trim
+
+  // 🔢 Sort by closest price to buyer budget
+  listings.sort(
+    (a, b) => Math.abs(a.price - budget) - Math.abs(b.price - budget)
+  );
+
+  // 🔽 Return top 5 closest matches
+  return listings.slice(0, 5);
 }
 
 async function validateInterest(listingId) {
