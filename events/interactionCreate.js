@@ -7,6 +7,7 @@ const {
   PermissionsBitField
 } = require("discord.js");
 
+const Draft = require("../models/Draft");
 const { startSellerDraft } = require("../services/sellerFlow");
 const { checkSubscription } = require("../services/subscriptionService");
 
@@ -78,21 +79,80 @@ module.exports = {
 
       await startSellerDraft(interaction.user.id, interaction.guild.id);
 
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("sell_account")
+          .setLabel("🧑‍💼 Account")
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("sell_resources")
+          .setLabel("🌾 Resources")
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("sell_kingdom")
+          .setLabel("🏰 Kingdom")
+          .setStyle(ButtonStyle.Primary)
+      );
+
       await interaction.reply({
         content: "📩 Check your DMs to continue seller setup.",
         flags: 64
       });
 
-      await interaction.user.send("**Welcome Seller!**\n\nPlease enter Kingdom Season:");
+      await interaction.user.send({
+        content: "**Welcome Seller!**\n\nWhat do you want to sell?",
+        components: [row]
+      });
+
       return;
+    }
+
+    // =========================
+    // SELL TYPE SELECTION
+    // =========================
+    if (interaction.customId.startsWith("sell_")) {
+
+      const draft = await Draft.findOne({ userId: interaction.user.id });
+      if (!draft) {
+        return interaction.reply({
+          content: "❌ Seller session expired. Click Seller again.",
+          flags: 64
+        });
+      }
+
+      draft.step = 1;
+      draft.data = {};
+
+      if (interaction.customId === "sell_account") {
+        draft.sellType = "account";
+        await draft.save();
+        await interaction.user.send("Account Season Tag:");
+      }
+
+      if (interaction.customId === "sell_resources") {
+        draft.sellType = "resources";
+        await draft.save();
+        await interaction.user.send("🌾 Enter **Food** amount:");
+      }
+
+      if (interaction.customId === "sell_kingdom") {
+        draft.sellType = "kingdom";
+        await draft.save();
+        await interaction.user.send("Season (e.g. Season of Conquest):");
+      }
+
+      return interaction.reply({
+        content: "✅ Selection saved. Continue in DMs.",
+        flags: 64
+      });
     }
 
     // =========================
     // BUYER BUTTON
     // =========================
     if (interaction.customId === "buyer") {
-
-      const Draft = require("../models/Draft");
 
       await Draft.findOneAndUpdate(
         { userId: interaction.user.id },
@@ -164,7 +224,7 @@ module.exports = {
               deny: [PermissionsBitField.Flags.ViewChannel]
             },
             {
-              id: listing.sellerId.toString(),
+              id: listing.sellerId,
               allow: [
                 PermissionsBitField.Flags.ViewChannel,
                 PermissionsBitField.Flags.SendMessages
@@ -178,7 +238,7 @@ module.exports = {
               ]
             },
             {
-              id: mmData.id.toString(),
+              id: mmData.id,
               allow: [
                 PermissionsBitField.Flags.ViewChannel,
                 PermissionsBitField.Flags.SendMessages
@@ -194,7 +254,6 @@ module.exports = {
           `MM: <@${mmData.id}>`
         );
 
-        // Create Deal document
         const deal = await Deal.create({
           listingId,
           guildId: listing.guildId,
@@ -205,7 +264,6 @@ module.exports = {
           status: "waiting_payment"
         });
 
-        // Create checklist message
         const checklistMessage = await ticket.send({
           embeds: [
             new EmbedBuilder()
@@ -225,9 +283,8 @@ module.exports = {
         deal.checklistMessageId = checklistMessage.id;
         await deal.save();
 
-        // Disable Buy button
         const channel = await client.channels.fetch(listing.channelId);
-        const message = await channel.messages.fetch(listing.messageId);
+        const msg = await channel.messages.fetch(listing.messageId);
 
         const disabledRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -237,7 +294,7 @@ module.exports = {
             .setDisabled(true)
         );
 
-        await message.edit({ components: [disabledRow] });
+        await msg.edit({ components: [disabledRow] });
 
         await interaction.editReply({
           content: `✅ Deal ticket created: ${ticket}`
@@ -245,7 +302,6 @@ module.exports = {
 
       } catch (err) {
         console.error("BUY BUTTON ERROR:", err);
-
         await interaction.editReply({
           content: "⚠ Something went wrong while starting the deal."
         });
@@ -253,4 +309,3 @@ module.exports = {
     }
   }
 };
-
