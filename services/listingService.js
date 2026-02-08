@@ -113,7 +113,6 @@ async function markListingAsSold(client, listing, guildConfig) {
     // =============================
     // DETERMINE SOLD CHANNEL (BY sellType)
     // =============================
-    let soldChannelId;
 
     // 🧑‍💼 ACCOUNT
     // 🌾 RESOURCES
@@ -189,6 +188,7 @@ module.exports = {
   getListingById,
   markListingAsSold
 };
+
 
 
 
