@@ -159,31 +159,28 @@ if (!draft) {
        BUY TYPE (DM)
     ========================= */
     if (id.startsWith("buytype_")) {
-  if (interaction.guild) {
-    return interaction.reply({
-      content: "❌ Use this in DM.",
-      flags: 64
-    });
-  }
+
+  // ACK FIRST (IMPORTANT)
+  await interaction.deferReply({ flags: 64 });
 
   const draft = await Draft.findOne({ userId: interaction.user.id });
   if (!draft || draft.role !== "buyer") {
-    return interaction.reply({
-      content: "❌ Buyer session expired. Click Buyer again.",
-      flags: 64
-    });
+    return interaction.editReply("❌ Buyer session expired. Click Buyer again.");
   }
 
   draft.buyType = id.replace("buytype_", "");
   draft.step = 1;
-  draft.data = {}; // reset buyer data safely
   await draft.save();
 
+  // DM user
   await interaction.user.send(
-  `✅ You chose **${draft.buyType.toUpperCase()}**.\n\n` +
-  "💰 Enter your budget in USD (numbers only):"
-);
+    `✅ You chose **${draft.buyType.toUpperCase()}**.\n\n` +
+    "💰 Enter your budget in USD (numbers only):"
+  );
+
+  return interaction.editReply("📩 Check your DMs.");
 }
+
 
 
     /* ==========================
@@ -244,6 +241,7 @@ if (!draft) {
     }
   }
 };
+
 
 
 
