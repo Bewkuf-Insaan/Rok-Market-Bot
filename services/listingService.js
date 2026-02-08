@@ -68,7 +68,7 @@ async function getListingById(listingId) {
 }
 
 // =================================================
-// MARK LISTING AS SOLD (AUTO ROUTING)
+// MARK LISTING AS SOLD (FINAL ROUTING LOGIC)
 // =================================================
 async function markListingAsSold(client, listing, guildConfig) {
   try {
@@ -82,7 +82,7 @@ async function markListingAsSold(client, listing, guildConfig) {
     }
 
     // =============================
-    // CLONE / BUILD SOLD EMBED
+    // BUILD SOLD EMBED
     // =============================
     let soldEmbed;
 
@@ -90,9 +90,12 @@ async function markListingAsSold(client, listing, guildConfig) {
       const oldEmbed = originalMessage.embeds[0];
       soldEmbed = EmbedBuilder.from(oldEmbed)
         .setColor(0xe74c3c)
-        .setFooter({ text: "SOLD" });
+        .setFooter({ text: "🔴 SOLD" });
 
-      const statusIndex = oldEmbed.fields?.findIndex(f => f.name === "Status");
+      const statusIndex = oldEmbed.fields?.findIndex(
+        f => f.name.toLowerCase() === "status"
+      );
+
       if (statusIndex !== -1) {
         soldEmbed.spliceFields(statusIndex, 1, {
           name: "Status",
@@ -108,36 +111,30 @@ async function markListingAsSold(client, listing, guildConfig) {
     }
 
     // =============================
-    // DETERMINE SOLD CHANNEL
+    // DETERMINE SOLD CHANNEL (BY sellType)
     // =============================
-    let soldChannelId = null;
+    let soldChannelId;
 
     // 🧑‍💼 ACCOUNT
-    if (listing.data?.seasonTag && listing.price) {
-      const rangeKey = getPriceRange(listing.price);
-      soldChannelId = guildConfig.soldChannels?.[rangeKey];
+    if (listing.sellType === "account") {
+      const range = getPriceRange(listing.price);
+      soldChannelId = guildConfig.soldChannels?.[range];
     }
 
     // 🌾 RESOURCES
-    else if (
-      listing.data?.food &&
-      listing.data?.wood &&
-      listing.data?.stone &&
-      listing.data?.gold
-    ) {
+    if (listing.sellType === "resources") {
       soldChannelId = guildConfig.resourceSoldChannelId;
     }
 
     // 🏰 KINGDOM
-    else if (
-      listing.data?.season &&
-      listing.data?.mainAlliance
-    ) {
+    if (listing.sellType === "kingdom") {
       soldChannelId = guildConfig.kingdomSoldChannelId;
     }
 
     if (!soldChannelId) {
-      console.error("❌ SOLD channel not found for listing", listing.listingId);
+      console.error(
+        `❌ Sold channel not configured for ${listing.sellType} listing #${listing.listingId}`
+      );
       return;
     }
 
@@ -171,4 +168,3 @@ module.exports = {
   getListingById,
   markListingAsSold
 };
-
