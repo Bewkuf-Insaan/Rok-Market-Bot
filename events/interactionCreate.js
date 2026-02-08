@@ -156,74 +156,80 @@ module.exports = {
     // =========================
     // BUYER BUTTON (SERVER)
     // =========================
-    if (interaction.customId === "buyer") {
+    // =========================
+// BUYER BUTTON (SERVER)
+// =========================
+if (interaction.customId === "buyer") {
 
-      await Draft.findOneAndUpdate(
-        { userId: interaction.user.id },
-        {
-          userId: interaction.user.id,
-          guildId: interaction.guild.id,
-          role: "buyer",
-          step: 0,
-          data: {}
-        },
-        { upsert: true }
-      );
+  await Draft.findOneAndUpdate(
+    { userId: interaction.user.id },
+    {
+      userId: interaction.user.id,
+      guildId: interaction.guild.id,
+      role: "buyer",
+      step: 0,
+      data: {}
+    },
+    { upsert: true }
+  );
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("buytype_account")
-          .setLabel("🧑‍💼 Account")
-          .setStyle(ButtonStyle.Primary),
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("buy_account")
+      .setLabel("🧑‍💼 Account")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("buy_resources")
+      .setLabel("🌾 Resources")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("buy_kingdom")
+      .setLabel("🏰 Kingdom")
+      .setStyle(ButtonStyle.Primary)
+  );
 
-        new ButtonBuilder()
-          .setCustomId("buytype_resources")
-          .setLabel("🌾 Resources")
-          .setStyle(ButtonStyle.Primary),
+  await interaction.reply({
+    content: "📩 Check your DMs to continue buyer setup.",
+    flags: 64
+  });
 
-        new ButtonBuilder()
-          .setCustomId("buytype_kingdom")
-          .setLabel("🏰 Kingdom")
-          .setStyle(ButtonStyle.Primary)
-      );
+  await interaction.user.send({
+    content: "**What do you want to buy?**",
+    components: [row]
+  });
 
-      await interaction.reply({
-        content: "📩 Check your DMs to continue buyer setup.",
-        flags: 64
-      });
+  return;
+}
 
-      await interaction.user.send({
-        content: "**Welcome Buyer!**\n\nWhat do you want to buy?",
-        components: [row]
-      });
-
-      return;
-    }
 
     // =========================
     // BUY TYPE SELECTION (DM)
     // =========================
-    if (interaction.customId.startsWith("buytype_")) {
+    // =========================
+// BUY TYPE SELECTION (DM)
+// =========================
+if (interaction.customId.startsWith("buy_")) {
 
-      const draft = await Draft.findOne({ userId: interaction.user.id });
-      if (!draft) {
-        return interaction.reply({
-          content: "❌ Buyer session expired. Click Buyer again.",
-          flags: 64
-        });
-      }
+  const draft = await Draft.findOne({ userId: interaction.user.id });
+  if (!draft) {
+    return interaction.reply({
+      content: "❌ Buyer session expired. Click Buyer again.",
+      flags: 64
+    });
+  }
 
-      draft.buyType = interaction.customId.replace("buytype_", "");
-      draft.step = 1;
-      await draft.save();
+  draft.buyType = interaction.customId.replace("buy_", "");
+  draft.step = 1;
+  await draft.save();
 
-      await interaction.reply({
-        content: "✅ Selection saved. Continue in DMs.",
-        flags: 64
-      });
+  await interaction.user.send("💰 Enter your budget in USD (numbers only):");
 
-      return interaction.user.send("Enter your budget in USD (numbers only):");
-    }
+  return interaction.reply({
+    content: "Answer the above question..",
+    flags: 64
+  });
+}
+
 
     // ==========================
     // BUY LISTING BUTTON (SERVER)
@@ -346,4 +352,5 @@ module.exports = {
     }
   }
 };
+
 
