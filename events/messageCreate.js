@@ -47,56 +47,54 @@ module.exports = {
 
       const guildConfig = await Guild.findOne({ guildId: draft.guildId });
 
-      const minPrice = Math.max(0, budget - 100);
-const maxPrice = budget + 100;
+      let listings = [];
 
-let listings = await Listing.find({
-  guildId: draft.guildId,
-  sellType: draft.buyType,
-  status: "available",
-  $expr: {
-    $and: [
-      {
-        $gte: [
-          {
-            $convert: {
-              input: "$price",
-              to: "int",
-              onError: 0,
-              onNull: 0
-            }
-          },
-          minPrice
-        ]
-      },
-      {
-        $lte: [
-          {
-            $convert: {
-              input: "$price",
-              to: "int",
-              onError: 999999999,
-              onNull: 999999999
-            }
-          },
-          maxPrice
-        ]
-      }
-    ]
-  }
-}).limit(10);
+if (draft.buyType === "resources") {
+  // 🌾 RESOURCES → simple under-budget logic
+  listings = await Listing.find({
+    guildId: draft.guildId,
+    sellType: "resources",
+    status: "available",
+    price: { $lte: budget }
+  })
+    .sort({ price: 1 })
+    .limit(5);
 
+} else {
+  // 🧑‍💼 ACCOUNT + 🏰 KINGDOM → ±100 logic
+  const minPrice = Math.max(0, budget - 100);
+  const maxPrice = budget + 100;
 
-// sort closest to buyer budget
-listings.sort(
-  (a, b) =>
-    Math.abs(Number(a.price) - budget) -
-    Math.abs(Number(b.price) - budget)
-);
+  listings = await Listing.find({
+    guildId: draft.guildId,
+    sellType: draft.buyType,
+    status: "available",
+    $expr: {
+      $and: [
+        {
+          $gte: [
+            { $convert: { input: "$price", to: "int", onError: 0, onNull: 0 } },
+            minPrice
+          ]
+        },
+        {
+          $lte: [
+            { $convert: { input: "$price", to: "int", onError: 999999999, onNull: 999999999 } },
+            maxPrice
+          ]
+        }
+      ]
+    }
+  }).limit(10);
 
-// keep top 5
-listings = listings.slice(0, 5);
+  listings.sort(
+    (a, b) =>
+      Math.abs(Number(a.price) - budget) -
+      Math.abs(Number(b.price) - budget)
+  );
 
+  listings = listings.slice(0, 5);
+}
 
       let reply = `💰 **${draft.buyType.toUpperCase()} listings under $${budget}:**\n\n`;
 
@@ -361,5 +359,6 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
