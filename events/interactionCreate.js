@@ -250,12 +250,17 @@ await markListingInDeal(client, listing);
           ]
         });
 
-        await ticket.send(
-          `🛡 **Deal Started**\n\n` +
-          `Buyer: <@${interaction.user.id}>\n` +
-          `Seller: <@${listing.sellerId}>\n` +
-          `MM: <@${mm.id}>`
-        );
+        const listingLink =`https://discord.com/channels/${listing.guildId}/${listing.channelId}/${listing.messageId}`;
+
+await ticket.send(
+  `🛡 **Deal Started**\n\n` +
+  `🆔 **Listing ID:** #${listingId}\n` +
+  `🔗 **Listing Link:** ${listingLink}\n\n` +
+  `👤 **Buyer:** <@${interaction.user.id}>\n` +
+  `🧑‍💼 **Seller:** <@${listing.sellerId}>\n` +
+  `🛡 **MM:** <@${mm.id}>`
+);
+
 
         await Deal.create({
           listingId,
@@ -275,4 +280,5 @@ await markListingInDeal(client, listing);
     }
   }
 };
+
 
