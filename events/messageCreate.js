@@ -223,7 +223,6 @@ module.exports = {
     "provideAlliance","migration","rebels"
   ];
 
-  // TEXT QUESTIONS (steps 1–7)
   if (draft.step >= 1 && draft.step <= fields.length) {
     data[fields[draft.step - 1]] = message.content;
     await updateDraft(message.author.id, draft.step + 1, data);
@@ -256,6 +255,7 @@ module.exports = {
     return finalizeListing(message, client, draft, data);
   }
 }
+
 
 /* =================================================
    FINALIZE LISTING
@@ -324,21 +324,21 @@ async function finalizeListing(message, client, draft, data) {
 ================================================= */
 function nextAccountQuestion(step) {
   const q = {
-    2:"Account Details Tag:",
-    3:"Kingdom:",
-    4:"Account Age:",
+    2:"Account Type (Openfield/Rally/Garrison Leads):",
+    3:"Kingdom Number:",
+    4:"Account Age(days):",
     5:"Power:",
     6:"Kill Points / Death:",
     7:"VIP:",
     8:"Castle Level:",
     9:"Passport / Alliance Coin:",
-    10:"Legendary Commanders:",
-    11:"Legendary Equipment:",
+    10:"Legendary Commanders Expertised:",
+    11:"Legendary Equipment / Crits:",
     12:"Legendary City Skin:",
     13:"Goldhead:",
-    14:"Account Bind:",
-    15:"Receipts:",
-    16:"VIP Access:",
+    14:"Account Bind (Facebook/Gmail):",
+    15:"First/Last 6 Months Receipts Available?:",
+    16:"VIP Access (Yes/No):",
     17:"Price (USD):"
   };
   return q[step];
@@ -359,15 +359,16 @@ function nextResourceQuestion(step) {
 function nextKingdomQuestion(step) {
   const q = {
     2:"Kingdom number:",
-    3:"Main alliance:",
+    3:"Main alliance count:",
     4:"Farm alliance count:",
     5:"Alliances provided:",
-    6:"Migration status:",
+    6:"Migration status (Whales):",
     7:"Rebels? (Yes/No):",
     8:"Price (USD):"
   };
   return q[step];
 }
+
 
 
 
