@@ -254,8 +254,8 @@ module.exports = {
   if (draft.step === 10) {
     return finalizeListing(message, client, draft, data);
   }
-}
-  }
+   }
+  };
 
 
 /* =================================================
@@ -369,6 +369,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
