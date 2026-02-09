@@ -17,6 +17,11 @@ const listingSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  sellType: {
+  type: String,
+  enum: ["account", "resources", "kingdom"],
+  required: true
+},
 
   mmName: {
     type: String,
@@ -77,3 +82,4 @@ const listingSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Listing", listingSchema);
+
