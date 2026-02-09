@@ -318,6 +318,7 @@ async function finalizeListing(message, client, draft, data) {
   await deleteDraft(message.author.id);
   return message.author.send("✅ Listing posted successfully!");
 }
+  };
 
 /* =================================================
    QUESTIONS
@@ -368,6 +369,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
