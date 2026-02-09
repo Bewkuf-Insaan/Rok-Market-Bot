@@ -281,21 +281,21 @@ async function finalizeListing(message, client, draft, data) {
 ================================================= */
 function nextAccountQuestion(step) {
   const q = {
-    2:"Account Type:",
+    2:"Account Type (Mixed, Rally, Garrison):",
     3:"Kingdom Number:",
     4:"Account Age:",
     5:"Power:",
-    6:"Kill Points:",
+    6:"Kill Points/ Death:",
     7:"VIP:",
     8:"Castle Level:",
     9:"Passport:",
-    10:"Legendary Commanders:",
-    11:"Legendary Equipment:",
+    10:"Legendary Commanders Expertised:",
+    11:"Legendary Equipment/ Crits:",
     12:"City Skin:",
     13:"Goldheads:",
-    14:"Account Bind:",
-    15:"Receipts:",
-    16:"VIP Access:",
+    14:"Account Bind (Facebook/Gmail):",
+    15:"First/ Last 6 Months Receipts Available?:",
+    16:"VIP Access(Yes/No):",
     17:"Price (USD):"
   };
   return q[step];
@@ -308,7 +308,7 @@ function nextResourceQuestion(step) {
     4:"🥇 Gold:",
     5:"Kingdom:",
     6:"Migratable? (Yes/No):",
-    7:"Upload screenshots:"
+    7:"Upload screenshots of Resources (Max:10):"
   };
   return q[step];
 }
@@ -316,12 +316,13 @@ function nextResourceQuestion(step) {
 function nextKingdomQuestion(step) {
   const q = {
     2:"Kingdom number:",
-    3:"Main alliance:",
+    3:"Main alliance count:",
     4:"Farm alliance count:",
     5:"Alliances provided:",
-    6:"Migration status:",
+    6:"Migration status of whales:",
     7:"Rebels? (Yes/No):",
     8:"Price (USD):"
   };
   return q[step];
 }
+
