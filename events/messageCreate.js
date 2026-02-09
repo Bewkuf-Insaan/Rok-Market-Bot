@@ -125,13 +125,37 @@ if (draft.buyType === "resources") {
             `🏰 All kingdom listings:\n` +
             `https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
         }
-      } else {
-        for (const l of listings) {
-          reply +=
-            `🔹 **#${l.listingId}** — $${l.price}\n` +
-            `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
-        }
-      }
+      } } else {
+  for (const l of listings) {
+    reply +=
+      `🔹 **#${l.listingId}** — $${l.price}\n` +
+      `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
+  }
+
+  // 🔎 Explore more listings (channel link)
+  if (draft.buyType === "account") {
+    const range = getPriceRange(budget);
+    const channelId = guildConfig.priceChannels?.[range];
+    if (channelId) {
+      reply +=
+        `🔎 Explore more accounts in **$${range}** range:\n` +
+        `https://discord.com/channels/${draft.guildId}/${channelId}\n\n`;
+    }
+  }
+
+  if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
+    reply +=
+      `🌾 Explore all resource listings:\n` +
+      `https://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
+  }
+
+  if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
+    reply +=
+      `🏰 Explore all kingdom listings:\n` +
+      `https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
+  }
+}
+
 
       reply += "Click 🛒 **Buy Now** on a listing to start a deal.";
       return message.author.send(reply);
@@ -359,6 +383,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
