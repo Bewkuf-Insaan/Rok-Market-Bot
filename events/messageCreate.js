@@ -159,7 +159,7 @@ module.exports = {
 
         data.price = price;
         await updateDraft(message.author.id, 18, data);
-        return message.author.send("📸 Upload screenshots:");
+        return message.author.send("📸 Upload screenshots of account:");
       }
 
       if (draft.step === 18) {
@@ -191,7 +191,7 @@ module.exports = {
 
       if (draft.step === 7) {
         if (!message.attachments.size)
-          return message.author.send("❌ Upload screenshots.");
+          return message.author.send("❌ Upload screenshotsof resources.");
 
         data.screenshots = message.attachments.map(a => a.url);
         await updateDraft(message.author.id, 8, data);
@@ -216,35 +216,46 @@ module.exports = {
     /* =================================================
        SELLER – KINGDOM
     ================================================= */
-    if (draft.role === "seller" && draft.sellType === "kingdom") {
+   if (draft.role === "seller" && draft.sellType === "kingdom") {
 
-      const fields = [
-        "season","kingdom","mainAlliance","farmAlliance",
-        "provideAlliance","migration","rebels"
-      ];
+  const fields = [
+    "season","kingdom","mainAlliance","farmAlliance",
+    "provideAlliance","migration","rebels"
+  ];
 
-      if (draft.step >= 1 && draft.step <= fields.length) {
-        data[fields[draft.step - 1]] = message.content;
-        await updateDraft(message.author.id, draft.step + 1, data);
-        return message.author.send(nextKingdomQuestion(draft.step + 1));
-      }
-
-      if (draft.step === 8) {
-        const price = parseInt(message.content);
-        if (isNaN(price) || price <= 0)
-          return message.author.send("❌ Invalid price.");
-
-        data.price = price;
-        await updateDraft(message.author.id, 9, data);
-        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
-      }
-
-      if (draft.step === 9) {
-        return finalizeListing(message, client, draft, data);
-      }
-    }
+  // TEXT QUESTIONS (steps 1–7)
+  if (draft.step >= 1 && draft.step <= fields.length) {
+    data[fields[draft.step - 1]] = message.content;
+    await updateDraft(message.author.id, draft.step + 1, data);
+    return message.author.send(nextKingdomQuestion(draft.step + 1));
   }
-};
+
+  // STEP 8 → PRICE
+  if (draft.step === 8) {
+    const price = parseInt(message.content);
+    if (isNaN(price) || price <= 0)
+      return message.author.send("❌ Invalid price.");
+
+    data.price = price;
+    await updateDraft(message.author.id, 9, data);
+    return message.author.send("📸 Upload kingdom screenshots:");
+  }
+
+  // STEP 9 → SCREENSHOTS
+  if (draft.step === 9) {
+    if (!message.attachments.size)
+      return message.author.send("❌ Please upload at least one screenshot.");
+
+    data.screenshots = message.attachments.map(a => a.url);
+    await updateDraft(message.author.id, 10, data);
+    return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+  }
+
+  // STEP 10 → FINALIZE
+  if (draft.step === 10) {
+    return finalizeListing(message, client, draft, data);
+  }
+}
 
 /* =================================================
    FINALIZE LISTING
@@ -357,6 +368,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
