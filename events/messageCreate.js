@@ -30,109 +30,85 @@ module.exports = {
     /* =================================================
        BUYER FLOW
     ================================================= */
-    if (draft.role === "buyer" && draft.step === 1) {
+   if (draft.role === "buyer" && draft.step === 1) {
 
-      if (!draft.buyType) {
-        return message.author.send("❌ Choose what you want to buy first.");
-      }
-
-      const budget = parseInt(message.content);
-      if (isNaN(budget) || budget <= 0) {
-        return message.author.send("❌ Enter a valid numeric budget.");
-      }
-
-      draft.step = 2;
-      draft.data.budget = budget;
-      await draft.save();
-
-      const guildConfig = await Guild.findOne({ guildId: draft.guildId });
-
-      let listings = [];
-
-if (draft.buyType === "resources") {
-  // 🌾 RESOURCES → simple under-budget logic
-  listings = await Listing.find({
-    guildId: draft.guildId,
-    sellType: "resources",
-    status: "available",
-    price: { $lte: budget }
-  })
-    .sort({ price: 1 })
-    .limit(5);
-
-} else {
-  // 🧑‍💼 ACCOUNT + 🏰 KINGDOM → ±100 logic
-  const minPrice = Math.max(0, budget - 100);
-  const maxPrice = budget + 100;
-
-  listings = await Listing.find({
-    guildId: draft.guildId,
-    sellType: draft.buyType,
-    status: "available",
-    $expr: {
-      $and: [
-        {
-          $gte: [
-            { $convert: { input: "$price", to: "int", onError: 0, onNull: 0 } },
-            minPrice
-          ]
-        },
-        {
-          $lte: [
-            { $convert: { input: "$price", to: "int", onError: 999999999, onNull: 999999999 } },
-            maxPrice
-          ]
-        }
-      ]
-    }
-  }).limit(10);
-
-  listings.sort(
-    (a, b) =>
-      Math.abs(Number(a.price) - budget) -
-      Math.abs(Number(b.price) - budget)
-  );
-
-  listings = listings.slice(0, 5);
-}
-
-      let reply = `💰 **${draft.buyType.toUpperCase()} listings under $${budget}:**\n\n`;
-
-      if (!listings.length) {
-        reply += `❌ No listings found under $${budget}.\n\n`;
-
-        // ACCOUNT → price range channel
-        if (draft.buyType === "account") {
-          const range = getPriceRange(budget);
-          const channelId = guildConfig.priceChannels?.[range];
-          if (channelId) {
-            reply +=
-              `🔎 Accounts in **$${range}** range:\n` +
-              `https://discord.com/channels/${draft.guildId}/${channelId}\n\n`;
-          }
-        }
-
-        // RESOURCES
-        if (draft.buyType === "resources" && guildConfig.resourceSellChannelId) {
-          reply +=
-            `🌾 All resource listings:\n` +
-            `https://discord.com/channels/${draft.guildId}/${guildConfig.resourceSellChannelId}\n\n`;
-        }
-
-        // KINGDOM
-        if (draft.buyType === "kingdom" && guildConfig.kingdomSellChannelId) {
-          reply +=
-            `🏰 All kingdom listings:\n` +
-            `https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
-        }
-      } } else {
-  for (const l of listings) {
-    reply +=
-      `🔹 **#${l.listingId}** — $${l.price}\n` +
-      `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
+  if (!draft.buyType) {
+    return message.author.send("❌ Choose what you want to buy first.");
   }
 
-  // 🔎 Explore more listings (channel link)
+  const budget = parseInt(message.content);
+  if (isNaN(budget) || budget <= 0) {
+    return message.author.send("❌ Enter a valid numeric budget.");
+  }
+
+  draft.step = 2;
+  draft.data.budget = budget;
+  await draft.save();
+
+  const guildConfig = await Guild.findOne({ guildId: draft.guildId });
+
+  let listings = [];
+
+  // 🌾 RESOURCES → under budget
+  if (draft.buyType === "resources") {
+    listings = await Listing.find({
+      guildId: draft.guildId,
+      sellType: "resources",
+      status: "available",
+      price: { $lte: budget }
+    })
+      .sort({ price: 1 })
+      .limit(5);
+
+  } else {
+    // 🧑‍💼 ACCOUNT + 🏰 KINGDOM → ±100 logic
+    const minPrice = Math.max(0, budget - 100);
+    const maxPrice = budget + 100;
+
+    listings = await Listing.find({
+      guildId: draft.guildId,
+      sellType: draft.buyType,
+      status: "available",
+      $expr: {
+        $and: [
+          {
+            $gte: [
+              { $convert: { input: "$price", to: "int", onError: 0, onNull: 0 } },
+              minPrice
+            ]
+          },
+          {
+            $lte: [
+              { $convert: { input: "$price", to: "int", onError: 999999999, onNull: 999999999 } },
+              maxPrice
+            ]
+          }
+        ]
+      }
+    }).limit(10);
+
+    listings.sort(
+      (a, b) =>
+        Math.abs(Number(a.price) - budget) -
+        Math.abs(Number(b.price) - budget)
+    );
+
+    listings = listings.slice(0, 5);
+  }
+
+  let reply = `💰 **${draft.buyType.toUpperCase()} listings near $${budget}:**\n\n`;
+
+  if (!listings.length) {
+    reply += `❌ No listings found.\n\n`;
+  } else {
+    for (const l of listings) {
+      reply +=
+        `🔹 **#${l.listingId}** — $${l.price}\n` +
+        `https://discord.com/channels/${draft.guildId}/${l.channelId}/${l.messageId}\n\n`;
+    }
+  }
+
+  // 🔎 Explore more listings
   if (draft.buyType === "account") {
     const range = getPriceRange(budget);
     const channelId = guildConfig.priceChannels?.[range];
@@ -154,12 +130,10 @@ if (draft.buyType === "resources") {
       `🏰 Explore all kingdom listings:\n` +
       `https://discord.com/channels/${draft.guildId}/${guildConfig.kingdomSellChannelId}\n\n`;
   }
+
+  reply += "Click 🛒 **Buy Now** on a listing to start a deal.";
+  return message.author.send(reply);
 }
-
-
-      reply += "Click 🛒 **Buy Now** on a listing to start a deal.";
-      return message.author.send(reply);
-    }
 
     /* =================================================
        SELLER – ACCOUNT
@@ -383,6 +357,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
