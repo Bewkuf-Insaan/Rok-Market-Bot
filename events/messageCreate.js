@@ -255,7 +255,7 @@ module.exports = {
     return finalizeListing(message, client, draft, data);
   }
 }
-  };
+  }
 
 
 /* =================================================
@@ -369,6 +369,7 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
 
 
