@@ -146,7 +146,7 @@ module.exports = {
       if (draft.step === 18) {
         data.screenshots = message.attachments.map(a => a.url);
         await updateDraft(message.author.id, 19, data);
-        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+        return message.author.send("Choose MM: MrEdd (For Testing)");
       }
 
       if (draft.step === 19) {
@@ -176,7 +176,7 @@ module.exports = {
       if (draft.step === 8) {
         data.price = parseInt(message.content);
         await updateDraft(message.author.id, 9, data);
-        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+        return message.author.send("Choose MM: MrEdd (For Testing)");
       }
 
       if (draft.step === 9) {
@@ -209,7 +209,7 @@ module.exports = {
       if (draft.step === 9) {
         data.screenshots = message.attachments.map(a => a.url);
         await updateDraft(message.author.id, 10, data);
-        return message.author.send("Choose MM: Arsyu / Brahim / Aries");
+        return message.author.send("Choose MM: MrEdd (For Testing)");
       }
 
       if (draft.step === 10) {
@@ -325,4 +325,5 @@ function nextKingdomQuestion(step) {
   };
   return q[step];
 }
+
 
